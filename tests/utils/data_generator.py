@@ -1,22 +1,20 @@
 import random
-from datetime import datetime, timedelta
 from faker import Faker
 
 faker = Faker("ru_RU")
 
-
 class MovieDataGenerator:
 
-    GENRES = [1, 2, 3, 4, 5]
-    LOCATIONS = ["MSK", "SPB"]
+    GENRE = [1, 2, 3, 4, 5]
+    LOCATION = ["MSK", "SPB"]
 
     @staticmethod
     def generate_random_title():
         return f"{faker.catch_phrase()} {faker.color_name()}"
 
     @staticmethod
-    def generate_random_description():
-        return faker.text(max_nb_chars=50)
+    def generate_random_description(max_nb_chars=50):
+        return faker.text(max_nb_chars=max_nb_chars)
 
     @staticmethod
     def generate_random_price(min_price=100, max_price=1000):
@@ -24,11 +22,11 @@ class MovieDataGenerator:
 
     @staticmethod
     def generate_random_location():
-        return random.choice(MovieDataGenerator.LOCATIONS)
+        return random.choice(MovieDataGenerator.LOCATION)
 
     @staticmethod
     def generate_random_genre():
-        return random.choice(MovieDataGenerator.GENRES)
+        return random.choice(MovieDataGenerator.GENRE)
 
     @staticmethod
     def generate_random_published():

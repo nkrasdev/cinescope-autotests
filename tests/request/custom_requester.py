@@ -2,9 +2,6 @@ import logging
 import os
 import json
 
-import requests
-
-
 class CustomRequester:
 
     base_headers = {
@@ -19,7 +16,7 @@ class CustomRequester:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
 
-    def send_request(self, method, endpoint, data=None, expected_status=200, need_logging=True):
+    def _send_request(self, method, endpoint, data=None, **kwargs):
         url = f"{self.base_url}{endpoint}"
 
         request_kwargs: dict = {"headers": self.headers}
@@ -30,11 +27,26 @@ class CustomRequester:
 
         response = self.session.request(method, url, **request_kwargs)
 
+        expected_status = kwargs.get("expected_status", 200)
+        need_logging = kwargs.get("need_logging", True)
+
         if need_logging:
             self.log_request_and_response(response)
         if response.status_code != expected_status:
             raise ValueError(f"Unexpected status code: {response.status_code}. Expected: {expected_status}")
         return response
+
+    def get(self, endpoint, params=None, **kwargs):
+        return self._send_request("GET", endpoint, data=params, **kwargs)
+
+    def post(self, endpoint, data=None, **kwargs):
+        return self._send_request("POST", endpoint, data=data, **kwargs)
+
+    def patch(self, endpoint, data=None, **kwargs):
+        return self._send_request("PATCH", endpoint, data=data, **kwargs)
+
+    def delete(self, endpoint, data=None, **kwargs):
+        return self._send_request("DELETE", endpoint, data=data, **kwargs)
 
     def _update_session_headers(self, **kwargs):
         self.headers.update(kwargs)

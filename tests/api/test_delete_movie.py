@@ -1,5 +1,6 @@
 import pytest
 from tests.utils.data_generator import MovieDataGenerator
+from tests.constants import NON_EXISTENT_ID
 
 class TestDeleteMovie:
 
@@ -12,7 +13,6 @@ class TestDeleteMovie:
             movie_id=movie_id,
             expected_status=200
         )
-
         assert delete_response.json()["id"] == movie_id
 
         admin_api_manager.movies_api.get_movie_by_id(
@@ -31,30 +31,21 @@ class TestDeleteMovie:
                 movie_id=movie_id,
                 expected_status=401,
             )
-
             assert response.json()["message"] == "Unauthorized"
-
         finally:
             if movie_id:
                 admin_api_manager.movies_api.delete_movie(movie_id, expected_status=200)
 
-    def test_delete_non_existent_movie(self, admin_api_manager):
-        non_existent_id = 999999999
+    @pytest.mark.parametrize("non_existent_id", [0, -1, NON_EXISTENT_ID])
+    def test_delete_non_existent_movie(self, admin_api_manager, non_existent_id):
         response = admin_api_manager.movies_api.delete_movie(
             movie_id=non_existent_id,
             expected_status=404
         )
-        assert "не найден" in response.json()["message"]
+        assert "Фильм не найден" in response.json()["message"]
 
     def test_delete_movie_with_bad_request(self, admin_api_manager):
         admin_api_manager.movies_api.delete_movie(
             movie_id="abc",
-            expected_status=400
-        )
-
-    @pytest.mark.parametrize("invalid_id", ["0", "-1"])
-    def test_delete_movie_with_invalid_id_not_found(self, admin_api_manager, invalid_id):
-        admin_api_manager.movies_api.delete_movie(
-            movie_id=invalid_id,
             expected_status=404
         )

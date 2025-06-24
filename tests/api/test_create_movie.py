@@ -8,13 +8,13 @@ class TestCreateMovie:
                 movie_data=movie_payload,
                 expected_status=201
             )
-            created_movie = create_response.json()
-            movie_id = created_movie.get("id")
+            created_movie_data = create_response.json()
+            movie_id = created_movie_data.get("id")
 
             assert movie_id is not None
             for key, value in movie_payload.items():
-                assert created_movie[key] == value
-            assert created_movie["imageUrl"] is None
+                assert created_movie_data[key] == value
+            assert created_movie_data["imageUrl"] is None
         finally:
             if movie_id:
                 admin_api_manager.movies_api.delete_movie(movie_id, expected_status=200)
@@ -28,23 +28,14 @@ class TestCreateMovie:
         assert response_json["message"] == "Unauthorized"
         assert response_json["statusCode"] == 401
 
-    def test_create_movie_conflict_duplicate_name(self, admin_api_manager, movie_payload):
-        create_response = admin_api_manager.movies_api.create_movie(
+    def test_create_movie_conflict_duplicate_name(self, admin_api_manager, created_movie, movie_payload):
+        response = admin_api_manager.movies_api.create_movie(
             movie_data=movie_payload,
-            expected_status=201
+            expected_status=409
         )
-        movie_id = create_response.json()["id"]
-
-        try:
-            response = admin_api_manager.movies_api.create_movie(
-                movie_data=movie_payload,
-                expected_status=409
-            )
-            response_json = response.json()
-            assert response_json.get("error") == "Conflict"
-            assert "уже существует" in response_json.get("message", "")
-        finally:
-            admin_api_manager.movies_api.delete_movie(movie_id, expected_status=200)
+        response_json = response.json()
+        assert response_json.get("error") == "Conflict"
+        assert "уже существует" in response_json.get("message", "")
 
     def test_create_movie_bad_request_empty_body(self, admin_api_manager):
         response = admin_api_manager.movies_api.create_movie(
