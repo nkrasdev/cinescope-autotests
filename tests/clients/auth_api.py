@@ -12,7 +12,7 @@ class AuthAPI(CustomRequester):
 
     def login(self, email: str | None = ADMIN_EMAIL, password: str | None = ADMIN_PASSWORD, expected_status: int = 200) -> requests.Response:
         if not email or not password:
-            raise ValueError("ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env file")
+            raise ValueError("ADMIN_EMAIL и ADMIN_PASSWORD должны быть указаны в .env file")
 
         payload = {"email": email, "password": password}
         response = self.post(LOGIN_ENDPOINT, data=payload, expected_status=expected_status)
@@ -20,7 +20,7 @@ class AuthAPI(CustomRequester):
         if response.ok:
             access_token = response.json()["accessToken"]
             self.session.headers["Authorization"] = f"Bearer {access_token}"
-            self.logger.info("Login successful - new access token obtained.")
+            self.logger.info("Логин выполнен.")
 
         return response
 

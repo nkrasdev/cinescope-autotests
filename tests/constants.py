@@ -14,7 +14,6 @@ HEADERS = {
 MOVIES_ENDPOINT = "/movies"
 CREATE_MOVIE_ENDPOINT = "/movies"
 MOVIE_BY_ID_ENDPOINT = "/movies/{movie_id}"
-MOVIE_REVIEWS_ENDPOINT = "/movies/{movie_id}/reviews"
 
 LOGIN_ENDPOINT = "/login"
 REGISTER_ENDPOINT = "/register"
