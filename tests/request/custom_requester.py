@@ -12,14 +12,14 @@ class CustomRequester:
     def __init__(self, session, base_url):
         self.session = session
         self.base_url = base_url
-        self.headers = self.base_headers.copy()
+        self.session.headers.update(self.base_headers)
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
 
     def _send_request(self, method, endpoint, data=None, **kwargs):
         url = f"{self.base_url}{endpoint}"
 
-        request_kwargs: dict = {"headers": self.headers}
+        request_kwargs: dict = {}
         if method.upper() in ("GET", "DELETE"):
             request_kwargs["params"] = data
         else:
@@ -33,7 +33,7 @@ class CustomRequester:
         if need_logging:
             self.log_request_and_response(response)
         if response.status_code != expected_status:
-            raise ValueError(f"Unexpected status code: {response.status_code}. Expected: {expected_status}")
+            raise ValueError(f"Непредвиденный код ответа: {response.status_code}. Ожидался: {expected_status}")
         return response
 
     def get(self, endpoint, params=None, **kwargs):
@@ -49,8 +49,7 @@ class CustomRequester:
         return self._send_request("DELETE", endpoint, data=data, **kwargs)
 
     def _update_session_headers(self, **kwargs):
-        self.headers.update(kwargs)
-        self.session.headers.update(self.headers)
+        self.session.headers.update(kwargs)
 
     def log_request_and_response(self, response):
         try:

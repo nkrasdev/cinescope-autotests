@@ -46,6 +46,16 @@ class MovieDataGenerator:
 class UserDataGenerator:
 
     @staticmethod
+    def generate_user_payload():
+        password = UserDataGenerator.generate_random_password()
+        return {
+            "email": UserDataGenerator.generate_random_email(),
+            "fullName": UserDataGenerator.generate_random_name(),
+            "password": password,
+            "passwordRepeat": password
+        }
+
+    @staticmethod
     def generate_random_email():
         return faker.email()
 
@@ -54,7 +64,7 @@ class UserDataGenerator:
         return faker.name()
 
     @staticmethod
-    def generate_random_password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True):
+    def generate_random_password(length=12, special_chars=False, digits=True, upper_case=True, lower_case=True):
         return faker.password(
             length=length,
             special_chars=special_chars,
