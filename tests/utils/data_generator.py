@@ -30,7 +30,7 @@ class MovieDataGenerator:
 
     @staticmethod
     def generate_random_published():
-        return True
+        return random.choice([True, False])
 
     @staticmethod
     def generate_valid_movie_payload():
