@@ -2,3 +2,5 @@ requests
 pytest
 faker
 python-dotenv
+pydantic
+allure-pytest

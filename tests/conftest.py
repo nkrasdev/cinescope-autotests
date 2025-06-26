@@ -1,7 +1,6 @@
 import pytest
 import requests
 from faker import Faker
-
 from clients.api_manager import ApiManager
 from tests.constants import BASE_URL
 from utils.data_generator import MovieDataGenerator, UserDataGenerator
@@ -26,22 +25,20 @@ def movie_payload():
 def admin_api_manager() -> ApiManager:
     session = requests.Session()
     manager = ApiManager(session, base_url=BASE_URL)
-    response = manager.auth_api.login()
-    assert response.ok, f"Не удалось залогиниться, как админ: {response.text}"
+    manager.auth_api.login()
     return manager
 
 @pytest.fixture
 def created_movie(admin_api_manager, movie_payload):
     movie_id = None
     try:
-        create_response = admin_api_manager.movies_api.create_movie(
+        created_movie_model = admin_api_manager.movies_api.create_movie(
             movie_data=movie_payload,
             expected_status=201
         )
-        created_movie_data = create_response.json()
-        movie_id = created_movie_data["id"]
+        movie_id = created_movie_model.id
 
-        yield created_movie_data
+        yield created_movie_model
 
     finally:
         if movie_id:
@@ -53,9 +50,7 @@ def new_registered_user(user_credentials):
     api_manager = ApiManager(session, base_url=BASE_URL)
 
     try:
-        response = api_manager.auth_api.register(user_data=user_credentials, expected_status=201)
-        if not response.ok:
-            pytest.fail(f"Не удалось залогиниться новому пользователю: {response.text}")
+        api_manager.auth_api.register(user_data=user_credentials, expected_status=201)
     except ValueError as e:
         pytest.fail(f"Регистрация прервана с непредвиденной ошибкой: {e}")
 

@@ -1,12 +1,9 @@
 from datetime import datetime
 from typing import Optional, List
-
 from pydantic import BaseModel, Field
-
 from tests.models.enums import Location
 from tests.models.genre import Genre
 from tests.models.review import Review
-
 
 class Movie(BaseModel):
     id: int

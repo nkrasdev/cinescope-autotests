@@ -1,8 +1,6 @@
 from typing import List
 from pydantic import BaseModel, Field
-
 from tests.models.movie import Movie
-
 
 class MoviesList(BaseModel):
     movies: List[Movie]

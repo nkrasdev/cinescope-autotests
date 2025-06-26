@@ -33,7 +33,10 @@ class CustomRequester:
         if need_logging:
             self.log_request_and_response(response)
         if response.status_code != expected_status:
-            raise ValueError(f"Непредвиденный код ответа: {response.status_code}. Ожидался: {expected_status}")
+            raise ValueError(
+                f"Непредвиденный код ответа: {response.status_code}. Ожидался: {expected_status}. "
+                f"Тело ответа: {response.text}"
+            )
         return response
 
     def get(self, endpoint, params=None, **kwargs):
