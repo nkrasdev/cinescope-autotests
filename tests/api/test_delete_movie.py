@@ -94,6 +94,7 @@ class TestDeleteMovie:
     )
     @pytest.mark.parametrize("non_existent_id", [0, -1, NON_EXISTENT_ID])
     def test_delete_non_existent_movie(self, admin_api_manager, non_existent_id):
+        allure.dynamic.title(f"Тест удаления фильма с несуществующим ID: {non_existent_id}")
         LOGGER.info(f"Запуск теста: test_delete_non_existent_movie с ID: {non_existent_id}")
         with allure.step(f"Попытка удаления фильма с несуществующим ID: {non_existent_id}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_DELETE.format(non_existent_id))

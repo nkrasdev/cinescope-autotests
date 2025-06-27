@@ -197,6 +197,7 @@ class TestGetMovies:
         {"pageSize": 21}
     ])
     def test_invalid_page_size(self, api_manager, params):
+        allure.dynamic.title(f"Тест с невалидным pageSize: {params['pageSize']}")
         LOGGER.info(f"Запуск теста: test_invalid_page_size с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с невалидным размером страницы: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST_INVALID.format(params))

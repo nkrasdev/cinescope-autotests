@@ -122,6 +122,8 @@ class TestEditMovie:
         {"name": 12345}
     ])
     def test_edit_movie_with_invalid_data(self, admin_api_manager, created_movie, invalid_data):
+        field = list(invalid_data.keys())[0]
+        allure.dynamic.title(f"Тест редактирования с невалидным полем: '{field}'")
         movie_id = created_movie.id
         LOGGER.info(f"Запуск теста: test_edit_movie_with_invalid_data для ID {movie_id} с данными {invalid_data}")
         with allure.step(f"Попытка редактирования фильма с невалидными данными: {invalid_data}"):

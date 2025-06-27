@@ -143,6 +143,7 @@ class TestCreateMovie:
         ("genreId", "первый жанр")
     ])
     def test_create_movie_bad_request_invalid_types(self, admin_api_manager, movie_payload, field_to_break, invalid_value):
+        allure.dynamic.title(f"Тест создания фильма с невалидным полем: '{field_to_break}'")
         LOGGER.info(f"Запуск теста: невалидный тип для поля '{field_to_break}'")
         with allure.step(f"Подготовка невалидных данных: в поле '{field_to_break}' установлено значение '{invalid_value}'"):
 
