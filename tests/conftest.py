@@ -54,6 +54,10 @@ def user_credentials(faker_instance) -> tuple[UserCreate, str]:
 def movie_payload() -> MovieCreate:
     return MovieDataGenerator.generate_valid_movie_payload()
 
+@pytest.fixture()
+def user_credentials_ui(faker_instance) -> tuple[UserCreate, str]:
+    return UserDataGenerator.generate_user_payload()
+
 @pytest.fixture(scope="function")
 def admin_api_manager(api_manager: ApiManager) -> ApiManager:
     api_manager.auth_api.login()
@@ -82,6 +86,14 @@ def created_movie(admin_api_manager, movie_payload: MovieCreate):
                 LOGGER.info(f"Фильм с ID {movie_id} успешно удален фикстурой.")
             except AssertionError:
                 LOGGER.warning(f"Не удалось удалить фильм с ID {movie_id} в teardown фикстуры. Возможно, он уже был удален в тесте.")
+
+@pytest.fixture
+def registered_user_by_api_ui(api_manager: ApiManager, user_credentials_ui: tuple[UserCreate, str]) -> UserCreate:
+    user_payload, password_repeat = user_credentials_ui
+    register_data = user_payload.model_dump(by_alias=True)
+    register_data["passwordRepeat"] = password_repeat
+    api_manager.auth_api.register(user_data=register_data, expected_status=201)
+    return user_payload
 
 @pytest.fixture
 def new_registered_user(user_credentials: tuple[UserCreate, str]) -> Generator[tuple[ApiManager, UserCreate], None, None]:
