@@ -1,32 +1,95 @@
 import requests
-from typing import Optional
-
-from tests.constants import MOVIES_ENDPOINT, CREATE_MOVIE_ENDPOINT, MOVIE_BY_ID_ENDPOINT
+import logging
+from typing import Optional, Union, TypeAlias
+from tests.constants.endpoints import MOVIES_ENDPOINT, CREATE_MOVIE_ENDPOINT, MOVIE_BY_ID_ENDPOINT
+from tests.constants.log_messages import LogMessages
 from tests.request.custom_requester import CustomRequester
 from tests.clients.auth_api import AuthAPI
+from tests.models.movie_models import Movie, MovieWithReviews
+from tests.models.response_models import MoviesList, ErrorResponse, DeletedObject
+from tests.models.request_models import MovieCreate
+
+MovieResponse: TypeAlias = Union[Movie, ErrorResponse]
+DeletedMovieResponse: TypeAlias = Union[DeletedObject, ErrorResponse]
+MovieWithReviewsResponse: TypeAlias = Union[MovieWithReviews, ErrorResponse]
+MoviesListResponse: TypeAlias = Union[MoviesList, ErrorResponse]
 
 class MoviesAPI(CustomRequester):
     def __init__(self, session: requests.Session, base_url: str):
         super().__init__(session, base_url)
         self.auth_handler: Optional[AuthAPI] = None
+        self.logger = logging.getLogger(self.__class__.__name__)
 
-    def create_movie(self, movie_data: dict, *, expected_status: int = 201):
-        return self.post(CREATE_MOVIE_ENDPOINT, data=movie_data, expected_status=expected_status)
+    def create_movie(self, movie_data: Union[MovieCreate, dict], *, expected_status: int = 201) -> MovieResponse:
+        log_name = movie_data.name if isinstance(movie_data, MovieCreate) else "from dict"
+        self.logger.info(LogMessages.Movies.ATTEMPT_CREATE.format(log_name))
+        
+        if isinstance(movie_data, MovieCreate):
+            data = movie_data.model_dump(by_alias=True)
+        else:
+            data = movie_data
 
-    def get_movie_by_id(self, movie_id: int, *, expected_status: int = 200):
-        return self.get(MOVIE_BY_ID_ENDPOINT.format(movie_id=movie_id), expected_status=expected_status)
+        response = self.post(CREATE_MOVIE_ENDPOINT, json=data, expected_status=expected_status)
+        if response.ok:
+            movie = Movie.model_validate(response.json())
+            self.logger.info(LogMessages.Movies.CREATE_SUCCESS.format(movie.name, movie.id))
+            return movie
 
-    def delete_movie(self, movie_id, *, expected_status: int = 200):
-        return self.delete(MOVIE_BY_ID_ENDPOINT.format(movie_id=movie_id), expected_status=expected_status)
+        error = ErrorResponse.model_validate(response.json())
+        self.logger.error(f"Ошибка создания фильма '{log_name}': {error.message} (status: {error.statusCode})")
+        return error
 
-    def get_movies(self, params: dict | None = None, *, expected_status: int = 200):
-        request_params = params.copy() if params else {}
-        if "published" in request_params:
-            request_params["published"] = str(request_params["published"]).lower()
-        return self.get(MOVIES_ENDPOINT, params=request_params, expected_status=expected_status)
+    def get_movie_by_id(self, movie_id: int | str, expected_status: int = 200) -> MovieWithReviews | ErrorResponse:
+        self.logger.info(LogMessages.Movies.ATTEMPT_GET_BY_ID.format(movie_id))
+        response = self.get(MOVIE_BY_ID_ENDPOINT.format(movie_id=movie_id), expected_status=expected_status)
+        if response.ok:
+            movie = MovieWithReviews.model_validate(response.json())
+            self.logger.info(LogMessages.Movies.GET_BY_ID_SUCCESS.format(movie.name, movie_id))
+            return movie
 
-    def get_movies_with_invalid_params(self, *, params: dict, expected_status: int = 400):
-        return self.get(MOVIES_ENDPOINT, params=params, expected_status=expected_status)
+        error = ErrorResponse.model_validate(response.json())
+        self.logger.error(f"Ошибка получения фильма по ID {movie_id}: {error.message} (status: {error.statusCode})")
+        return error
 
-    def edit_movie(self, movie_id, payload: dict, *, expected_status: int = 200):
-        return self.patch(MOVIE_BY_ID_ENDPOINT.format(movie_id=movie_id), data=payload, expected_status=expected_status)
+    def delete_movie(self, movie_id: int | str, expected_status: int = 200) -> DeletedObject | ErrorResponse:
+        self.logger.info(LogMessages.Movies.ATTEMPT_DELETE.format(movie_id))
+        response = self.delete(MOVIE_BY_ID_ENDPOINT.format(movie_id=movie_id), expected_status=expected_status)
+        if response.ok:
+            deleted_object = DeletedObject.model_validate(response.json())
+            self.logger.info(LogMessages.Movies.DELETE_SUCCESS.format(movie_id, movie_id))
+            return deleted_object
+
+        error = ErrorResponse.model_validate(response.json())
+        self.logger.error(f"Ошибка удаления фильма {movie_id}: {error.message} (status: {error.statusCode})")
+        return error
+
+    def get_movies(self, params: dict | None = None, *, expected_status: int = 200) -> MoviesList | ErrorResponse:
+        self.logger.info(LogMessages.Movies.ATTEMPT_GET_LIST.format(params or "default"))
+        response = self.get(MOVIES_ENDPOINT, params=params, expected_status=expected_status)
+        if response.ok:
+            movies_list = MoviesList.model_validate(response.json())
+            self.logger.info(f"Успешно получено {len(movies_list.movies)} фильмов. Всего найдено: {movies_list.count}")
+            return movies_list
+
+        error = ErrorResponse.model_validate(response.json())
+        self.logger.error(f"Ошибка получения списка фильмов: {error.message} (status: {error.statusCode})")
+        return error
+
+    def get_movies_with_invalid_params(self, params: dict, expected_status: int = 400) -> ErrorResponse:
+        self.logger.info(LogMessages.Movies.ATTEMPT_GET_LIST_INVALID.format(params))
+        response = self.get(MOVIES_ENDPOINT, params=params, expected_status=expected_status)
+        error = ErrorResponse.model_validate(response.json())
+        self.logger.warning(f"Ожидаемая ошибка при получении фильмов: {error.message} (status: {error.statusCode})")
+        return error
+
+    def edit_movie(self, movie_id: int | str, payload: dict, expected_status: int = 200) -> Movie | ErrorResponse:
+        self.logger.info(LogMessages.Movies.ATTEMPT_EDIT.format(movie_id))
+        response = self.patch(MOVIE_BY_ID_ENDPOINT.format(movie_id=movie_id), json=payload, expected_status=expected_status)
+        if response.ok:
+            movie = Movie.model_validate(response.json())
+            self.logger.info(LogMessages.Movies.EDIT_SUCCESS.format(movie.name, movie.id))
+            return movie
+
+        error = ErrorResponse.model_validate(response.json())
+        self.logger.error(f"Ошибка редактирования фильма {movie_id}: {error.message} (status: {error.statusCode})")
+        return error
