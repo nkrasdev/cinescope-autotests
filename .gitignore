@@ -21,8 +21,9 @@ htmlcov/
 # Build artifacts
 build/
 dist/
+allure-results/
 *.egg-info/
-allure-results
+test-results
 
 # Other
 .DS_Store
