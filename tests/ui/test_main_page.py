@@ -2,6 +2,8 @@ import allure
 import pytest
 import re
 from playwright.sync_api import Page, expect
+
+from tests.constants.timeouts import Timeout
 from tests.ui.pages.main_page import MainPage
 from tests.utils.decorators import allure_test_details
 
@@ -78,4 +80,4 @@ class TestMainPage:
 
         with allure.step("Проверить, что страница 'Все фильмы' загрузилась"):
             location_filter = page.locator('[data-qa-id="movies_filter_location_select"]')
-            expect(location_filter).to_be_visible(timeout=5000) 
+            expect(location_filter).to_be_visible(timeout=Timeout.FIVE_SECONDS.value)
