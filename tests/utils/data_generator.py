@@ -43,7 +43,7 @@ class MovieDataGenerator:
             description=MovieDataGenerator.generate_random_description(),
             price=MovieDataGenerator.generate_random_price(),
             location=MovieDataGenerator.generate_random_location(),
-            genre_id=MovieDataGenerator.generate_random_genre(),
+            genreId=MovieDataGenerator.generate_random_genre(),
             published=MovieDataGenerator.generate_random_published(),
         )
         logger.debug(f"Сгенерированы данные для создания фильма: {payload.model_dump_json(indent=2)}")

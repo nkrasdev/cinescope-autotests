@@ -12,6 +12,7 @@ from tests.models.request_models import UserCreate, MovieCreate
 from tests.models.user_models import User
 from tests.models.movie_models import Movie
 from typing import Generator
+import allure
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,6 +22,9 @@ def pytest_sessionstart(session):
         os.makedirs(logs_dir)
 
     log_file = os.path.join(logs_dir, "tests.log")
+    screenshots_dir = os.path.join(logs_dir, "screenshots")
+    if not os.path.exists(screenshots_dir):
+        os.makedirs(screenshots_dir)
 
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
@@ -54,6 +58,10 @@ def user_credentials(faker_instance) -> tuple[UserCreate, str]:
 def movie_payload() -> MovieCreate:
     return MovieDataGenerator.generate_valid_movie_payload()
 
+@pytest.fixture()
+def user_credentials_ui(faker_instance) -> tuple[UserCreate, str]:
+    return UserDataGenerator.generate_user_payload()
+
 @pytest.fixture(scope="function")
 def admin_api_manager(api_manager: ApiManager) -> ApiManager:
     api_manager.auth_api.login()
@@ -82,6 +90,27 @@ def created_movie(admin_api_manager, movie_payload: MovieCreate):
                 LOGGER.info(f"Фильм с ID {movie_id} успешно удален фикстурой.")
             except AssertionError:
                 LOGGER.warning(f"Не удалось удалить фильм с ID {movie_id} в teardown фикстуры. Возможно, он уже был удален в тесте.")
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+
+    if report.when == "call" and report.failed:
+        if "page" in item.funcargs:
+            page = item.funcargs["page"]
+            screenshots_dir = os.path.join("logs", "screenshots")
+            screenshot_path = os.path.join(screenshots_dir, f"{item.name}_failure.png")
+            page.screenshot(path=screenshot_path)
+            allure.attach.file(screenshot_path, name="screenshot", attachment_type=allure.attachment_type.PNG)
+
+@pytest.fixture
+def registered_user_by_api_ui(api_manager: ApiManager, user_credentials_ui: tuple[UserCreate, str]) -> UserCreate:
+    user_payload, password_repeat = user_credentials_ui
+    register_data = user_payload.model_dump(by_alias=True)
+    register_data["passwordRepeat"] = password_repeat
+    api_manager.auth_api.register(user_data=register_data, expected_status=201)
+    return user_payload
 
 @pytest.fixture
 def new_registered_user(user_credentials: tuple[UserCreate, str]) -> Generator[tuple[ApiManager, UserCreate], None, None]:
