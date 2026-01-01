@@ -1,18 +1,20 @@
-import pytest
-import allure
-import pytest_check as check
 import logging
+
+import allure
+import pytest
+import pytest_check as check
+
+from tests.constants.log_messages import LogMessages
 from tests.models.movie_models import Movie
 from tests.models.response_models import ErrorResponse
 from tests.utils.decorators import allure_test_details
-from tests.constants.log_messages import LogMessages
 
 LOGGER = logging.getLogger(__name__)
+
 
 @allure.epic("Movies API")
 @allure.feature("Создание фильма")
 class TestCreateMovie:
-
     @allure_test_details(
         story="Успешное создание фильма",
         title="Тест создания фильма с валидными данными",
@@ -32,10 +34,7 @@ class TestCreateMovie:
         try:
             with allure.step("Отправка запроса на создание нового фильма"):
                 LOGGER.info(LogMessages.Movies.ATTEMPT_CREATE.format(movie_payload.name))
-                response = admin_api_manager.movies_api.create_movie(
-                    movie_data=movie_payload,
-                    expected_status=201
-                )
+                response = admin_api_manager.movies_api.create_movie(movie_data=movie_payload, expected_status=201)
                 is_movie = isinstance(response, Movie)
                 check.is_true(is_movie, f"Ожидался объект фильма, но получен {type(response)}")
                 if is_movie:
@@ -93,10 +92,7 @@ class TestCreateMovie:
             movie_payload.name = created_movie.name
         with allure.step("Попытка создания фильма с дублирующимся названием"):
             LOGGER.info(f"Попытка создания фильма с дублирующимся названием: '{movie_payload.name}'")
-            response = admin_api_manager.movies_api.create_movie(
-                movie_data=movie_payload,
-                expected_status=409
-            )
+            response = admin_api_manager.movies_api.create_movie(movie_data=movie_payload, expected_status=409)
         with allure.step("Проверка ответа об ошибке 'Conflict'"):
             is_error = isinstance(response, ErrorResponse)
             check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
@@ -115,10 +111,7 @@ class TestCreateMovie:
         LOGGER.info("Запуск теста: test_create_movie_bad_request_empty_body")
         with allure.step("Отправка запроса на создание фильма с пустым телом"):
             LOGGER.info("Попытка создания фильма с пустым телом запроса")
-            response = admin_api_manager.movies_api.create_movie(
-                movie_data={},
-                expected_status=400
-            )
+            response = admin_api_manager.movies_api.create_movie(movie_data={}, expected_status=400)
         with allure.step("Проверка ответа об ошибке 'Bad Request' и сообщений о валидации полей"):
             is_error = isinstance(response, ErrorResponse)
             check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
@@ -136,26 +129,24 @@ class TestCreateMovie:
         description="Этот тест проверяет, что система возвращает ошибку 400 Bad Request при отправке неверных типов данных в полях.",
         severity=allure.severity_level.NORMAL,
     )
-    @pytest.mark.parametrize("field_to_break, invalid_value", [
-        ("name", 12345),
-        ("price", "сто рублей"),
-        ("location", "New York"),
-        ("genreId", "первый жанр")
-    ])
-    def test_create_movie_bad_request_invalid_types(self, admin_api_manager, movie_payload, field_to_break, invalid_value):
+    @pytest.mark.parametrize(
+        "field_to_break, invalid_value",
+        [("name", 12345), ("price", "сто рублей"), ("location", "New York"), ("genreId", "первый жанр")],
+    )
+    def test_create_movie_bad_request_invalid_types(
+        self, admin_api_manager, movie_payload, field_to_break, invalid_value
+    ):
         allure.dynamic.title(f"Тест создания фильма с невалидным полем: '{field_to_break}'")
         LOGGER.info(f"Запуск теста: невалидный тип для поля '{field_to_break}'")
-        with allure.step(f"Подготовка невалидных данных: в поле '{field_to_break}' установлено значение '{invalid_value}'"):
-
+        with allure.step(
+            f"Подготовка невалидных данных: в поле '{field_to_break}' установлено значение '{invalid_value}'"
+        ):
             invalid_payload_dict = movie_payload.model_dump(by_alias=True)
             invalid_payload_dict[field_to_break] = invalid_value
 
         with allure.step("Отправка запроса на создание фильма с невалидными данными"):
             LOGGER.info(f"Попытка создания фильма с невалидным типом для поля '{field_to_break}': {invalid_value}")
-            response = admin_api_manager.movies_api.create_movie(
-                movie_data=invalid_payload_dict,
-                expected_status=400
-            )
+            response = admin_api_manager.movies_api.create_movie(movie_data=invalid_payload_dict, expected_status=400)
         with allure.step("Проверка ответа об ошибке 'Bad Request'"):
             is_error = isinstance(response, ErrorResponse)
             check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
@@ -163,4 +154,3 @@ class TestCreateMovie:
                 LOGGER.info(f"Получена ожидаемая ошибка Bad Request с сообщением: {response.message}")
                 check.equal(response.error, "Bad Request")
                 check.is_true(len(response.message) > 0, "Сообщение об ошибке не должно быть пустым")
-

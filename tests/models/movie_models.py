@@ -1,12 +1,15 @@
 from datetime import datetime
 from enum import Enum, IntEnum
-from typing import Optional, List
+
 from pydantic import BaseModel, Field
+
 from tests.models.user_models import UserInReview
+
 
 class Location(str, Enum):
     MSK = "MSK"
     SPB = "SPB"
+
 
 class GenreId(IntEnum):
     ACTION = 1
@@ -15,23 +18,26 @@ class GenreId(IntEnum):
     FANTASY = 4
     THRILLER = 5
 
+
 class Genre(BaseModel):
     name: str
 
+
 class Review(BaseModel):
-    user_id: Optional[int] = Field(None, alias="userId")
-    rating: Optional[int] = None
-    text: Optional[str] = None
-    hidden: Optional[bool] = None
-    created_at: Optional[datetime] = Field(None, alias="createdAt")
+    user_id: int | None = Field(None, alias="userId")
+    rating: int | None = None
+    text: str | None = None
+    hidden: bool | None = None
+    created_at: datetime | None = Field(None, alias="createdAt")
     user: UserInReview
+
 
 class Movie(BaseModel):
     id: int
     name: str
     description: str
     price: int
-    image_url: Optional[str] = Field(None, alias="imageUrl")
+    image_url: str | None = Field(None, alias="imageUrl")
     location: Location
     published: bool
     genre_id: int = Field(alias="genreId")
@@ -39,5 +45,6 @@ class Movie(BaseModel):
     created_at: datetime = Field(alias="createdAt")
     rating: float
 
+
 class MovieWithReviews(Movie):
-    reviews: List[Review] 
+    reviews: list[Review]

@@ -1,6 +1,9 @@
-from playwright.sync_api import Page, expect, Locator
-from tests.ui.pages.base_page import BasePage
 import re
+
+from playwright.sync_api import Locator, Page, expect
+
+from tests.ui.pages.base_page import BasePage
+
 
 class MoviesPage(BasePage):
     def __init__(self, page: Page):
@@ -36,7 +39,7 @@ class MoviesPage(BasePage):
         more_button = first_card.locator('[data-qa-id="more_button"]')
         href = more_button.get_attribute("href")
         assert href is not None, "Movie card 'more' button has no href attribute"
-        match = re.search(r'/movies/(\d+)', href)
+        match = re.search(r"/movies/(\d+)", href)
         assert match is not None, "Could not extract movie ID from href"
         movie_id = match.group(1)
-        return {"id": movie_id, "title": title} 
+        return {"id": movie_id, "title": title}

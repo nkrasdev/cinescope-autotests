@@ -1,7 +1,9 @@
-from playwright.sync_api import Page, expect, Locator
+from playwright.sync_api import Locator, Page, expect
+
 from tests.constants.timeouts import Timeout
-from tests.ui.pages.base_page import BasePage
 from tests.models.request_models import UserCreate
+from tests.ui.pages.base_page import BasePage
+
 
 class LoginPage(BasePage):
     def __init__(self, page: Page):
@@ -22,7 +24,7 @@ class LoginPage(BasePage):
     def check_user_is_logged_in(self):
         expect(self.page.get_by_text("Вы вошли в аккаунт")).to_be_visible(timeout=Timeout.TEN_SECONDS.value)
         expect(self.profile_button).to_be_visible()
-        
+
     def check_error_message(self, message: str):
         error_locator = self.page.get_by_text(message)
-        expect(error_locator).to_be_visible() 
+        expect(error_locator).to_be_visible()

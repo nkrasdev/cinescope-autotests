@@ -1,7 +1,6 @@
 class LogMessages:
-
     class General:
-        SESSION_START = "="*20 + " Test session started " + "="*20
+        SESSION_START = "=" * 20 + " Test session started " + "=" * 20
 
     class Auth:
         ATTEMPT_LOGIN = "Попытка логина для пользователя {}"

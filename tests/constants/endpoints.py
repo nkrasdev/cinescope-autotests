@@ -1,16 +1,10 @@
-import os
-from dotenv import load_dotenv
+from tests.config import settings
 
-load_dotenv()
+BASE_URL = settings.base_url
+BASE_UI_URL = settings.base_ui_url
+BASE_AUTH_URL = settings.base_auth_url
 
-BASE_URL = "https://api.dev-cinescope.coconutqa.ru"
-BASE_UI_URL = "https://dev-cinescope.coconutqa.ru"
-BASE_AUTH_URL = "https://auth.dev-cinescope.coconutqa.ru"
-
-HEADERS = {
-    "Content-Type": "application/json",
-    "Accept": "application/json"
-}
+HEADERS = {"Content-Type": "application/json", "Accept": "application/json"}
 
 MOVIES_ENDPOINT = "/movies"
 CREATE_MOVIE_ENDPOINT = "/movies"
@@ -21,13 +15,13 @@ REGISTER_ENDPOINT = "/register"
 LOGOUT_ENDPOINT = "/logout"
 REFRESH_ENDPOINT = "/refresh-tokens"
 
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+ADMIN_EMAIL = settings.admin_email
+ADMIN_PASSWORD = settings.admin_password
 
-NON_EXISTENT_ID = 999999999 
+NON_EXISTENT_ID = 999999999
 
 CARD_NUMBER = "4242424242424242"
 HOLDER_NAME = "Test User"
 EXP_MONTH = "Декабрь"
 EXP_YEAR = "2025"
-CVC = "123" 
+CVC = "123"

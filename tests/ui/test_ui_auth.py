@@ -1,18 +1,20 @@
 import re
-import pytest
+
 import allure
+import pytest
+from faker import Faker
 from playwright.sync_api import Page, expect
+
+from tests.models.request_models import UserCreate
 from tests.ui.pages.login_page import LoginPage
 from tests.ui.pages.register_page import RegisterPage
-from tests.models.request_models import UserCreate
-from faker import Faker
 from tests.utils.decorators import allure_test_details
+
 
 @pytest.mark.ui
 @allure.epic("UI тесты")
 @allure.feature("Аутентификация")
 class TestUIAuth:
-
     @allure_test_details(
         story="Регистрация нового пользователя",
         title="Успешная регистрация пользователя через UI",
@@ -24,7 +26,7 @@ class TestUIAuth:
         3. Заполнить и отправить форму регистрации.
         4. Проверить, что произошел редирект на страницу входа.
         """,
-        severity=allure.severity_level.CRITICAL
+        severity=allure.severity_level.CRITICAL,
     )
     def test_user_registration(self, page: Page, user_credentials_ui: tuple[UserCreate, str]):
         register_page = RegisterPage(page)
@@ -49,7 +51,7 @@ class TestUIAuth:
         3. Ввести email и пароль.
         4. Проверить, что пользователь успешно вошел в систему.
         """,
-        severity=allure.severity_level.CRITICAL
+        severity=allure.severity_level.CRITICAL,
     )
     def test_user_login(self, page: Page, registered_user_by_api_ui: UserCreate):
         login_page = LoginPage(page)
@@ -67,9 +69,11 @@ class TestUIAuth:
     def test_login_with_invalid_credentials(self, page: Page, faker_instance: Faker):
         login_page = LoginPage(page)
         login_page.open()
-        user = UserCreate(email=faker_instance.email(), password=faker_instance.password(), full_name=faker_instance.name())
+        user = UserCreate(
+            email=faker_instance.email(), password=faker_instance.password(), full_name=faker_instance.name()
+        )
         login_page.login(user, "wrong_password")
-        
+
         login_page.check_error_message("Неверная почта или пароль")
 
     @allure.story("Регистрация")
@@ -89,4 +93,4 @@ class TestUIAuth:
         register_page = RegisterPage(page)
         register_page.open()
         register_page.register_user(user, user.password)
-        register_page.check_error_message("Пароль должен содержать не менее 8 символов") 
+        register_page.check_error_message("Пароль должен содержать не менее 8 символов")

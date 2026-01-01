@@ -1,21 +1,22 @@
+import logging
+
 import allure
 import pytest
 import pytest_check as check
-import logging
 
 from tests.constants.endpoints import NON_EXISTENT_ID
+from tests.constants.log_messages import LogMessages
 from tests.models.movie_models import Movie, MovieWithReviews
 from tests.models.response_models import ErrorResponse
 from tests.utils.data_generator import MovieDataGenerator
 from tests.utils.decorators import allure_test_details
-from tests.constants.log_messages import LogMessages
 
 LOGGER = logging.getLogger(__name__)
+
 
 @allure.epic("Movies API")
 @allure.feature("Редактирование фильма")
 class TestEditMovie:
-
     @allure_test_details(
         story="Успешное редактирование фильма",
         title="Тест успешного редактирования названия фильма",
@@ -41,9 +42,7 @@ class TestEditMovie:
         with allure.step(f"Отправка запроса на редактирование фильма с ID {movie_id}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_EDIT.format(movie_id))
             edited_movie_response = admin_api_manager.movies_api.edit_movie(
-                movie_id=movie_id,
-                payload=edit_payload,
-                expected_status=200
+                movie_id=movie_id, payload=edit_payload, expected_status=200
             )
 
         with allure.step("Проверка данных в ответе API"):
@@ -53,13 +52,17 @@ class TestEditMovie:
                 LOGGER.info(LogMessages.Movies.EDIT_SUCCESS.format(edited_movie_response.name, movie_id))
                 check.equal(edited_movie_response.id, movie_id, "ID не должен меняться после редактирования")
                 check.equal(edited_movie_response.name, new_name, "Название фильма должно было обновиться")
-                check.equal(edited_movie_response.description, created_movie.description, "Описание не должно было измениться")
+                check.equal(
+                    edited_movie_response.description, created_movie.description, "Описание не должно было измениться"
+                )
 
         with allure.step("Контрольная проверка: повторное получение фильма по ID"):
             LOGGER.info(f"Контрольная проверка: запрашиваем фильм ID {movie_id} для проверки сохранения изменений")
             fetched_movie_response = admin_api_manager.movies_api.get_movie_by_id(movie_id, expected_status=200)
             is_fetched_movie = isinstance(fetched_movie_response, MovieWithReviews)
-            check.is_true(is_fetched_movie, f"Ожидался объект MovieWithReviews, но получен {type(fetched_movie_response)}")
+            check.is_true(
+                is_fetched_movie, f"Ожидался объект MovieWithReviews, но получен {type(fetched_movie_response)}"
+            )
             if is_fetched_movie:
                 LOGGER.info("Проверка в базе данных прошла успешно, название фильма совпадает с отредактированным.")
                 check.equal(fetched_movie_response.name, new_name, "Изменения не сохранились в базе данных")
@@ -98,9 +101,7 @@ class TestEditMovie:
             edit_payload = {"name": "Неважно"}
             LOGGER.info(LogMessages.Movies.ATTEMPT_EDIT.format(movie_id))
             response = admin_api_manager.movies_api.edit_movie(
-                movie_id=movie_id,
-                payload=edit_payload,
-                expected_status=404
+                movie_id=movie_id, payload=edit_payload, expected_status=404
             )
         with allure.step("Проверка ответа об ошибке 'не найден'"):
             is_error = isinstance(response, ErrorResponse)
@@ -115,12 +116,9 @@ class TestEditMovie:
         description="Этот тест проверяет, что система возвращает ошибку 400 Bad Request при отправке неверных типов данных в полях.",
         severity=allure.severity_level.NORMAL,
     )
-    @pytest.mark.parametrize("invalid_data", [
-        {"price": "дорого"},
-        {"location": "PARIS"},
-        {"genreId": "боевик"},
-        {"name": 12345}
-    ])
+    @pytest.mark.parametrize(
+        "invalid_data", [{"price": "дорого"}, {"location": "PARIS"}, {"genreId": "боевик"}, {"name": 12345}]
+    )
     def test_edit_movie_with_invalid_data(self, admin_api_manager, created_movie, invalid_data):
         field = list(invalid_data.keys())[0]
         allure.dynamic.title(f"Тест редактирования с невалидным полем: '{field}'")
@@ -129,9 +127,7 @@ class TestEditMovie:
         with allure.step(f"Попытка редактирования фильма с невалидными данными: {invalid_data}"):
             LOGGER.info(f"Попытка редактирования фильма ID {movie_id} с невалидными данными: {invalid_data}")
             response = admin_api_manager.movies_api.edit_movie(
-                movie_id=movie_id,
-                payload=invalid_data,
-                expected_status=400
+                movie_id=movie_id, payload=invalid_data, expected_status=400
             )
         with allure.step("Проверка, что ответ содержит ошибку 400"):
             is_error = isinstance(response, ErrorResponse)

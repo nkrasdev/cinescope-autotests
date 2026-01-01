@@ -1,5 +1,7 @@
-from playwright.sync_api import Page, expect, Locator
+from playwright.sync_api import Locator, Page, expect
+
 from tests.ui.pages.base_page import BasePage
+
 
 class MovieDetailsPage(BasePage):
     def __init__(self, page: Page):
@@ -31,4 +33,4 @@ class MovieDetailsPage(BasePage):
         expect(self.no_reviews_message).to_be_visible()
 
     def click_buy_ticket_button(self):
-        self.buy_ticket_button.click() 
+        self.buy_ticket_button.click()

@@ -1,5 +1,7 @@
-from playwright.sync_api import Page, expect, Locator
+from playwright.sync_api import Locator, Page, expect
+
 from tests.ui.pages.base_page import BasePage
+
 
 class PaymentSuccessPage(BasePage):
     def __init__(self, page: Page):
@@ -11,4 +13,4 @@ class PaymentSuccessPage(BasePage):
         expect(self.success_message_popup).to_be_visible()
 
     def click_back_to_main_button(self):
-        self.back_to_main_button.click() 
+        self.back_to_main_button.click()

@@ -1,0 +1,40 @@
+[project]
+name = "cinescope-autotests"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+	"allure-pytest>=2.15.3",
+	"faker>=40.1.0",
+	"pydantic[email]>=2.12.5",
+	"pydantic-settings>=2.12.0",
+	"pytest>=9.0.2",
+	"pytest-check>=2.6.2",
+	"pytest-mock>=3.15.1",
+	"pytest-playwright>=0.7.2",
+	"python-dotenv>=1.2.1",
+	"requests>=2.32.5",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.14.10"]
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "PLC", "PLE", "PLR", "PLW"]
+ignore = [
+	"PLR2004", # Magic values are acceptable in tests
+	"PLR0913", # Too many arguments are acceptable in tests/helpers
+	"E501",    # Line too long - handled by formatter mostly, but long strings in Allure/Docs are fine
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

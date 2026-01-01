@@ -1,23 +1,23 @@
-import random
 import logging
-import string
-from faker import Faker
-from tests.models.request_models import MovieCreate, UserCreate
-from tests.models.movie_models import Location, GenreId
+import random
 
-faker = Faker("ru_RU")
+from faker import Faker
+
+from tests.models.movie_models import GenreId, Location
+from tests.models.request_models import MovieCreate, UserCreate
+
 logger = logging.getLogger(__name__)
 
-class MovieDataGenerator:
 
+class MovieDataGenerator:
     LOCATION = [Location.MSK, Location.SPB]
 
     @staticmethod
-    def generate_random_title():
+    def generate_random_title(faker: Faker):
         return f"{faker.catch_phrase()} {faker.color_name()}"
 
     @staticmethod
-    def generate_random_description(max_nb_chars=50):
+    def generate_random_description(faker: Faker, max_nb_chars=50):
         return faker.text(max_nb_chars=max_nb_chars)
 
     @staticmethod
@@ -37,10 +37,10 @@ class MovieDataGenerator:
         return random.choice([True, False])
 
     @staticmethod
-    def generate_valid_movie_payload() -> MovieCreate:
+    def generate_valid_movie_payload(faker: Faker) -> MovieCreate:
         payload = MovieCreate(
-            name=MovieDataGenerator.generate_random_title(),
-            description=MovieDataGenerator.generate_random_description(),
+            name=MovieDataGenerator.generate_random_title(faker),
+            description=MovieDataGenerator.generate_random_description(faker),
             price=MovieDataGenerator.generate_random_price(),
             location=MovieDataGenerator.generate_random_location(),
             genreId=MovieDataGenerator.generate_random_genre(),
@@ -49,35 +49,40 @@ class MovieDataGenerator:
         logger.debug(f"Сгенерированы данные для создания фильма: {payload.model_dump_json(indent=2)}")
         return payload
 
-class UserDataGenerator:
 
+class UserDataGenerator:
     @staticmethod
-    def generate_user_payload() -> tuple[UserCreate, str]:
-        password = UserDataGenerator.generate_random_password()
+    def generate_user_payload(faker: Faker) -> tuple[UserCreate, str]:
+        password = UserDataGenerator.generate_random_password(faker)
         user_data = UserCreate(
-            email=UserDataGenerator.generate_random_email(),
-            full_name=UserDataGenerator.generate_random_name(),
-            password=password
+            email=UserDataGenerator.generate_random_email(faker),
+            full_name=UserDataGenerator.generate_random_name(faker),
+            password=password,
         )
         logger.debug(f"Сгенерированы данные для создания пользователя: Email - {user_data.email}")
         return user_data, password
 
     @staticmethod
-    def generate_random_email():
+    def generate_random_email(faker: Faker):
         return faker.safe_email()
 
     @staticmethod
-    def generate_random_name():
-        first_name = "".join(random.choices(string.ascii_lowercase, k=6))
-        last_name = "".join(random.choices(string.ascii_lowercase, k=8))
-        return f"{first_name.capitalize()} {last_name.capitalize()}"
+    def generate_random_name(faker: Faker):
+        return faker.name()
 
     @staticmethod
-    def generate_random_password(length=12, special_chars=False, digits=True, upper_case=True, lower_case=True):
+    def generate_random_password(
+        faker: Faker,
+        length=12,
+        special_chars=False,
+        digits=True,
+        upper_case=True,
+        lower_case=True,
+    ):
         return faker.password(
             length=length,
             special_chars=special_chars,
             digits=digits,
             upper_case=upper_case,
-            lower_case=lower_case
+            lower_case=lower_case,
         )

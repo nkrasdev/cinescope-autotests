@@ -1,20 +1,21 @@
+import logging
+
 import allure
 import pytest
 import pytest_check as check
-import logging
 
 from tests.constants.endpoints import NON_EXISTENT_ID
+from tests.constants.log_messages import LogMessages
 from tests.models.movie_models import MovieWithReviews
 from tests.models.response_models import ErrorResponse
 from tests.utils.decorators import allure_test_details
-from tests.constants.log_messages import LogMessages
 
 LOGGER = logging.getLogger(__name__)
+
 
 @allure.epic("Movies API")
 @allure.feature("Получение фильма по ID")
 class TestGetMovieById:
-
     @allure_test_details(
         story="Успешное получение фильма по ID",
         title="Тест успешного получения существующего фильма по его ID",
@@ -81,10 +82,7 @@ class TestGetMovieById:
         LOGGER.info(f"Запуск теста: test_get_movie_not_found_invalid_id с ID: {invalid_id}")
         with allure.step(f"Попытка получения фильма с невалидным ID: {invalid_id}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_BY_ID.format(invalid_id))
-            response = admin_api_manager.movies_api.get_movie_by_id(
-                invalid_id,
-                expected_status=404
-            )
+            response = admin_api_manager.movies_api.get_movie_by_id(invalid_id, expected_status=404)
         with allure.step("Проверка ответа об ошибке"):
             is_error = isinstance(response, ErrorResponse)
             check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
@@ -98,13 +96,11 @@ class TestGetMovieById:
         description="Этот тест проверяет, что система возвращает ошибку 400 при запросе фильма с ID неверного формата (не целое число).",
         severity=allure.severity_level.MINOR,
     )
-    @pytest.mark.parametrize("invalid_id, expected_status", [
-        (" ", 404),
-        ("abc", 500),
-        ("null", 500)
-    ])
+    @pytest.mark.parametrize("invalid_id, expected_status", [(" ", 404), ("abc", 500), ("null", 500)])
     def test_get_movie_bad_request(self, admin_api_manager, invalid_id, expected_status):
-        LOGGER.info(f"Запуск теста: test_get_movie_bad_request с ID: '{invalid_id}' и ожидаемым статусом {expected_status}")
+        LOGGER.info(
+            f"Запуск теста: test_get_movie_bad_request с ID: '{invalid_id}' и ожидаемым статусом {expected_status}"
+        )
         with allure.step(f"Попытка получения фильма по невалидному ID: '{invalid_id}'"):
             LOGGER.info(f"Попытка получения фильма по ID {invalid_id}")
             response = admin_api_manager.movies_api.get_movie_by_id(

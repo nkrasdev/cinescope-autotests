@@ -1,11 +1,10 @@
-from playwright.sync_api import Page, expect, Locator
+from playwright.sync_api import Locator, Page, expect
 
 from tests.constants.timeouts import Timeout
 from tests.ui.pages.base_page import BasePage
 
 
 class PaymentPage(BasePage):
-
     def __init__(self, page: Page):
         super().__init__(page)
         self.movie_title: Locator = page.locator("div:has(h3:text('Покупка билета')) >> p.text-muted-foreground")
@@ -21,17 +20,19 @@ class PaymentPage(BasePage):
     def open(self, movie_id: int):
         super().open(f"/payment?movieId={movie_id}")
 
-    def fill_payment_details(self, card_number: str, card_holder: str, month: str, year: str, cvc: str, amount: int = 1):
+    def fill_payment_details(
+        self, card_number: str, card_holder: str, month: str, year: str, cvc: str, amount: int = 1
+    ):
         self.amount_input.fill(str(amount))
         self.card_number_input.fill(card_number)
         self.card_holder_input.fill(card_holder)
-        
+
         self.month_select.click()
         self.page.get_by_role("option", name=month).click()
-        
+
         self.year_select.click()
         self.page.get_by_role("option", name=year).click()
-        
+
         self.cvc_input.fill(cvc)
 
     def submit_payment(self):

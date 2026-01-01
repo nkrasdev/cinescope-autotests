@@ -1,18 +1,20 @@
-import pytest
-import allure
-import pytest_check as check
 import logging
+
+import allure
+import pytest
+import pytest_check as check
+
+from tests.constants.log_messages import LogMessages
 from tests.models.movie_models import Movie
 from tests.models.response_models import ErrorResponse, MoviesList
 from tests.utils.decorators import allure_test_details
-from tests.constants.log_messages import LogMessages
 
 LOGGER = logging.getLogger(__name__)
+
 
 @allure.epic("Movies API")
 @allure.feature("Получение списка фильмов")
 class TestGetMovies:
-
     @allure_test_details(
         story="Пагинация",
         title="Тест получения фильмов с пагинацией по умолчанию",
@@ -24,7 +26,9 @@ class TestGetMovies:
         with allure.step("Отправка GET-запроса без параметров"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST.format("default"))
             response = api_manager.movies_api.get_movies()
-        with allure.step("Проверка, что ответ содержит список фильмов и корректные параметры пагинации по умолчанию (page=1, pageSize=10)"):
+        with allure.step(
+            "Проверка, что ответ содержит список фильмов и корректные параметры пагинации по умолчанию (page=1, pageSize=10)"
+        ):
             is_list = isinstance(response, MoviesList)
             check.is_true(is_list, f"Ожидался объект MoviesList, но получен {type(response)}")
             if is_list:
@@ -74,7 +78,10 @@ class TestGetMovies:
         if is_list:
             with allure.step("Проверка, что цены всех полученных фильмов находятся в заданном диапазоне"):
                 for movie in response.movies:
-                    check.is_true(100 <= movie.price <= 300, f"Цена фильма {movie.name} ({movie.price}) выходит за диапазон 100-300")
+                    check.is_true(
+                        100 <= movie.price <= 300,
+                        f"Цена фильма {movie.name} ({movie.price}) выходит за диапазон 100-300",
+                    )
 
     @allure_test_details(
         story="Фильтрация",
@@ -191,20 +198,13 @@ class TestGetMovies:
         description="Этот тест проверяет, что API возвращает ошибку 400 при некорректном значении `pageSize`.",
         severity=allure.severity_level.MINOR,
     )
-    @pytest.mark.parametrize("params", [
-        {"pageSize": "abc"},
-        {"pageSize": 0},
-        {"pageSize": 21}
-    ])
+    @pytest.mark.parametrize("params", [{"pageSize": "abc"}, {"pageSize": 0}, {"pageSize": 21}])
     def test_invalid_page_size(self, api_manager, params):
         allure.dynamic.title(f"Тест с невалидным pageSize: {params['pageSize']}")
         LOGGER.info(f"Запуск теста: test_invalid_page_size с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с невалидным размером страницы: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST_INVALID.format(params))
-            response = api_manager.movies_api.get_movies_with_invalid_params(
-                params=params,
-                expected_status=400
-            )
+            response = api_manager.movies_api.get_movies_with_invalid_params(params=params, expected_status=400)
         with allure.step("Проверка, что ответ содержит ошибку 400 и упоминание 'pageSize'"):
             is_error = isinstance(response, ErrorResponse)
             check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
@@ -223,10 +223,7 @@ class TestGetMovies:
         LOGGER.info(f"Запуск теста: test_invalid_location с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с невалидной локацией: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST_INVALID.format(params))
-            response = api_manager.movies_api.get_movies_with_invalid_params(
-                params=params,
-                expected_status=400
-            )
+            response = api_manager.movies_api.get_movies_with_invalid_params(params=params, expected_status=400)
         with allure.step("Проверка, что ответ содержит ошибку 400 и упоминание 'locations'"):
             is_error = isinstance(response, ErrorResponse)
             check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
@@ -245,10 +242,7 @@ class TestGetMovies:
         LOGGER.info(f"Запуск теста: test_invalid_created_at_enum с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с невалидным значением сортировки: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST_INVALID.format(params))
-            response = api_manager.movies_api.get_movies_with_invalid_params(
-                params=params,
-                expected_status=400
-            )
+            response = api_manager.movies_api.get_movies_with_invalid_params(params=params, expected_status=400)
         with allure.step("Проверка, что ответ содержит ошибку 400 и корректное сообщение"):
             is_error = isinstance(response, ErrorResponse)
             check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
@@ -267,10 +261,7 @@ class TestGetMovies:
         LOGGER.info(f"Запуск теста: test_invalid_genre_id с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с невалидным ID жанра: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST_INVALID.format(params))
-            response = api_manager.movies_api.get_movies_with_invalid_params(
-                params=params,
-                expected_status=400
-            )
+            response = api_manager.movies_api.get_movies_with_invalid_params(params=params, expected_status=400)
         with allure.step("Проверка, что ответ содержит ошибку 400 и упоминание 'genreId'"):
             is_error = isinstance(response, ErrorResponse)
             check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")

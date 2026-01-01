@@ -1,15 +1,17 @@
+import re
+
 import allure
 import pytest
-import re
 from playwright.sync_api import Page, expect
+
 from tests.ui.pages.movies_page import MoviesPage
 from tests.utils.decorators import allure_test_details
+
 
 @pytest.mark.ui
 @allure.epic("UI тесты")
 @allure.feature("Страница со списком фильмов")
 class TestMoviesPage:
-
     @pytest.fixture(scope="function", autouse=True)
     def setup(self, page: Page):
         self.movies_page = MoviesPage(page)
@@ -19,7 +21,7 @@ class TestMoviesPage:
         story="Отображение элементов",
         title="Отображение списка фильмов и карточек",
         description="Проверка, что на странице со списком фильмов присутствуют карточки фильмов.",
-        severity=allure.severity_level.NORMAL
+        severity=allure.severity_level.NORMAL,
     )
     def test_movie_list_and_cards_are_displayed(self):
         with allure.step("Получить карточки фильмов и проверить их наличие"):
@@ -30,7 +32,7 @@ class TestMoviesPage:
         story="Отображение элементов",
         title="Видимость фильтров и сортировки",
         description="Проверка, что на странице со списком фильмов отображаются элементы фильтрации и сортировки.",
-        severity=allure.severity_level.NORMAL
+        severity=allure.severity_level.NORMAL,
     )
     def test_filters_and_sorting_are_visible(self):
         with allure.step("Проверить видимость фильтров"):
@@ -48,7 +50,7 @@ class TestMoviesPage:
         2. Кликнуть на его карточку.
         3. Убедиться, что URL в браузере соответствует ID этого фильма.
         """,
-        severity=allure.severity_level.CRITICAL
+        severity=allure.severity_level.CRITICAL,
     )
     def test_movie_card_click_redirects_to_movie_page(self, page: Page):
         with allure.step("Получить детали первого фильма и кликнуть на него"):
@@ -63,7 +65,7 @@ class TestMoviesPage:
         story="Функциональность страницы",
         title="Работа пагинации",
         description="Проверка работоспособности пагинации на странице со списком фильмов.",
-        severity=allure.severity_level.NORMAL
+        severity=allure.severity_level.NORMAL,
     )
     def test_pagination_is_working(self, page: Page):
         with allure.step("Проверить видимость пагинации"):
@@ -74,4 +76,4 @@ class TestMoviesPage:
             if next_button.is_visible():
                 expect(next_button).to_be_enabled()
                 next_button.click()
-                expect(page).to_have_url(re.compile(r"/movies\?page=2")) 
+                expect(page).to_have_url(re.compile(r"/movies\?page=2"))

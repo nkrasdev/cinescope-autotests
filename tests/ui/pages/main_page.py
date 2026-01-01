@@ -1,5 +1,7 @@
 import re
-from playwright.sync_api import Page, expect, Locator
+
+from playwright.sync_api import Locator, Page, expect
+
 from tests.ui.pages.base_page import BasePage
 
 
@@ -26,11 +28,11 @@ class MainPage(BasePage):
         href = details_link.get_attribute("href")
         if not href:
             raise ValueError("Could not find href attribute on movie details link.")
-        
-        match = re.search(r'/movies/(\d+)', href)
+
+        match = re.search(r"/movies/(\d+)", href)
         if not match:
             raise ValueError(f"Could not extract movie ID from href: {href}")
-            
+
         movie_id = int(match.group(1))
         title = first_card.locator("h3").inner_text()
         return {"id": movie_id, "title": title}
@@ -42,4 +44,4 @@ class MainPage(BasePage):
         self.show_more_button.click()
 
     def click_all_movies_link(self):
-        self.all_movies_link.click() 
+        self.all_movies_link.click()

@@ -1,6 +1,7 @@
+import re
+
 import allure
 import pytest
-import re
 from playwright.sync_api import Page, expect
 
 from tests.constants.timeouts import Timeout
@@ -12,7 +13,6 @@ from tests.utils.decorators import allure_test_details
 @allure.epic("UI тесты")
 @allure.feature("Главная страница")
 class TestMainPage:
-
     @pytest.fixture(scope="function", autouse=True)
     def setup(self, page: Page):
         self.main_page = MainPage(page)
@@ -22,7 +22,7 @@ class TestMainPage:
         story="Отображение элементов",
         title="Видимость секции 'Последние фильмы'",
         description="Проверка, что на главной странице отображается заголовок секции 'Последние фильмы'.",
-        severity=allure.severity_level.NORMAL
+        severity=allure.severity_level.NORMAL,
     )
     def test_last_movies_section_is_visible(self):
         with allure.step("Проверить видимость заголовка 'Последние фильмы'"):
@@ -38,7 +38,7 @@ class TestMainPage:
         2. Убедиться, что на странице есть хотя бы одна карточка.
         3. Проверить, что у первой карточки виден заголовок, изображение и кнопка 'Подробнее'.
         """,
-        severity=allure.severity_level.CRITICAL
+        severity=allure.severity_level.CRITICAL,
     )
     def test_movie_cards_are_displayed(self):
         with allure.step("Получить все карточки фильмов и убедиться, что они есть"):
@@ -55,7 +55,7 @@ class TestMainPage:
         story="Навигация",
         title="Кнопка 'Подробнее' перенаправляет на страницу фильма",
         description="Проверка, что клик по кнопке 'Подробнее' на карточке фильма ведет на страницу этого фильма.",
-        severity=allure.severity_level.CRITICAL
+        severity=allure.severity_level.CRITICAL,
     )
     def test_more_details_button_redirects_to_movie_page(self, page: Page):
         with allure.step("Получить первую карточку фильма и кликнуть 'Подробнее'"):
@@ -71,12 +71,11 @@ class TestMainPage:
         story="Навигация",
         title="Переход на страницу 'Все фильмы' по клику на ссылку",
         description="Проверка, что клик по ссылке 'Все фильмы' в шапке ведет на страницу со списком всех фильмов.",
-        severity=allure.severity_level.NORMAL
+        severity=allure.severity_level.NORMAL,
     )
     def test_all_movies_link_redirects_to_movies_page(self, page: Page):
-        with allure.step("Кликнуть по ссылке 'Все фильмы'"):
-            with page.expect_navigation(url="**/movies"):
-                self.main_page.click_all_movies_link()
+        with allure.step("Кликнуть по ссылке 'Все фильмы'"), page.expect_navigation(url="**/movies"):
+            self.main_page.click_all_movies_link()
 
         with allure.step("Проверить, что страница 'Все фильмы' загрузилась"):
             location_filter = page.locator('[data-qa-id="movies_filter_location_select"]')

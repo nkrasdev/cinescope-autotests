@@ -1,9 +1,0 @@
-requests
-pytest
-faker
-python-dotenv
-pydantic
-allure-pytest
-pytest-check
-pytest-playwright
-pytest-mock

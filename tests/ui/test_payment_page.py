@@ -1,7 +1,8 @@
 import allure
 import pytest
-from playwright.sync_api import Page, expect
-from tests.constants.endpoints import CARD_NUMBER, HOLDER_NAME, EXP_MONTH, EXP_YEAR, CVC
+from playwright.sync_api import Page
+
+from tests.constants.endpoints import CARD_NUMBER, CVC, EXP_MONTH, EXP_YEAR, HOLDER_NAME
 from tests.models.request_models import UserCreate
 from tests.ui.pages.login_page import LoginPage
 from tests.ui.pages.main_page import MainPage
@@ -9,11 +10,11 @@ from tests.ui.pages.payment_page import PaymentPage
 from tests.ui.pages.payment_success_page import PaymentSuccessPage
 from tests.utils.decorators import allure_test_details
 
+
 @pytest.mark.ui
 @allure.epic("UI тесты")
 @allure.feature("Страница оплаты")
 class TestPaymentPage:
-
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self, page: Page, registered_user_by_api_ui: UserCreate):
         with allure.step("Подготовка: получить данные о фильме с главной страницы"):
@@ -37,7 +38,7 @@ class TestPaymentPage:
         story="Отображение элементов",
         title="Видимость названия фильма и цены на странице оплаты",
         description="Проверка, что на странице оплаты корректно отображаются название фильма и его цена.",
-        severity=allure.severity_level.NORMAL
+        severity=allure.severity_level.NORMAL,
     )
     def test_movie_title_and_price_are_visible(self, page: Page):
         with allure.step("Проверить видимость названия фильма"):
@@ -49,7 +50,7 @@ class TestPaymentPage:
         story="Валидация формы",
         title="Форма оплаты не отправляется с пустыми полями",
         description="Проверка, что при попытке отправить пустую форму оплаты появляется сообщение об ошибке.",
-        severity=allure.severity_level.NORMAL
+        severity=allure.severity_level.NORMAL,
     )
     def test_payment_form_is_not_submitted_with_empty_fields(self, page: Page):
         with allure.step("Отправить пустую форму оплаты"):
@@ -68,7 +69,7 @@ class TestPaymentPage:
         3. Отправить форму.
         4. Проверить, что отображается страница с сообщением об успешной оплате.
         """,
-        severity=allure.severity_level.CRITICAL
+        severity=allure.severity_level.CRITICAL,
     )
     def test_successful_payment(self, page: Page):
         with allure.step("Заполнить и отправить платежную форму"):
@@ -83,4 +84,4 @@ class TestPaymentPage:
 
         with allure.step("Проверить сообщение об успешной оплате"):
             payment_success_page = PaymentSuccessPage(page)
-            payment_success_page.check_success_message_is_visible() 
+            payment_success_page.check_success_message_is_visible()

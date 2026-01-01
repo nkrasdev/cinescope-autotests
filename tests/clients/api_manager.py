@@ -1,6 +1,7 @@
 from tests.clients.auth_api import AuthAPI
 from tests.clients.movies_api import MoviesAPI
-from tests.constants.endpoints import BASE_URL, BASE_AUTH_URL
+from tests.constants.endpoints import BASE_AUTH_URL, BASE_URL
+
 
 class ApiManager:
     def __init__(self, session, base_url: str = BASE_URL, base_auth_url: str = BASE_AUTH_URL):

@@ -1,33 +1,33 @@
-import requests
 import logging
-from typing import Optional, Union, TypeAlias
-from tests.constants.endpoints import MOVIES_ENDPOINT, CREATE_MOVIE_ENDPOINT, MOVIE_BY_ID_ENDPOINT
-from tests.constants.log_messages import LogMessages
-from tests.request.custom_requester import CustomRequester
-from tests.clients.auth_api import AuthAPI
-from tests.models.movie_models import Movie, MovieWithReviews
-from tests.models.response_models import MoviesList, ErrorResponse, DeletedObject
-from tests.models.request_models import MovieCreate
+from typing import TypeAlias
 
-MovieResponse: TypeAlias = Union[Movie, ErrorResponse]
-DeletedMovieResponse: TypeAlias = Union[DeletedObject, ErrorResponse]
-MovieWithReviewsResponse: TypeAlias = Union[MovieWithReviews, ErrorResponse]
-MoviesListResponse: TypeAlias = Union[MoviesList, ErrorResponse]
+import requests
+
+from tests.clients.auth_api import AuthAPI
+from tests.constants.endpoints import CREATE_MOVIE_ENDPOINT, MOVIE_BY_ID_ENDPOINT, MOVIES_ENDPOINT
+from tests.constants.log_messages import LogMessages
+from tests.models.movie_models import Movie, MovieWithReviews
+from tests.models.request_models import MovieCreate
+from tests.models.response_models import DeletedObject, ErrorResponse, MoviesList
+from tests.request.custom_requester import CustomRequester
+
+MovieResponse: TypeAlias = Movie | ErrorResponse
+DeletedMovieResponse: TypeAlias = DeletedObject | ErrorResponse
+MovieWithReviewsResponse: TypeAlias = MovieWithReviews | ErrorResponse
+MoviesListResponse: TypeAlias = MoviesList | ErrorResponse
+
 
 class MoviesAPI(CustomRequester):
     def __init__(self, session: requests.Session, base_url: str):
         super().__init__(session, base_url)
-        self.auth_handler: Optional[AuthAPI] = None
+        self.auth_handler: AuthAPI | None = None
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def create_movie(self, movie_data: Union[MovieCreate, dict], *, expected_status: int = 201) -> MovieResponse:
+    def create_movie(self, movie_data: MovieCreate | dict, *, expected_status: int = 201) -> MovieResponse:
         log_name = movie_data.name if isinstance(movie_data, MovieCreate) else "from dict"
         self.logger.info(LogMessages.Movies.ATTEMPT_CREATE.format(log_name))
-        
-        if isinstance(movie_data, MovieCreate):
-            data = movie_data.model_dump(by_alias=True)
-        else:
-            data = movie_data
+
+        data = movie_data.model_dump(by_alias=True) if isinstance(movie_data, MovieCreate) else movie_data
 
         response = self.post(CREATE_MOVIE_ENDPOINT, json=data, expected_status=expected_status)
         if response.ok:
@@ -84,7 +84,9 @@ class MoviesAPI(CustomRequester):
 
     def edit_movie(self, movie_id: int | str, payload: dict, expected_status: int = 200) -> Movie | ErrorResponse:
         self.logger.info(LogMessages.Movies.ATTEMPT_EDIT.format(movie_id))
-        response = self.patch(MOVIE_BY_ID_ENDPOINT.format(movie_id=movie_id), json=payload, expected_status=expected_status)
+        response = self.patch(
+            MOVIE_BY_ID_ENDPOINT.format(movie_id=movie_id), json=payload, expected_status=expected_status
+        )
         if response.ok:
             movie = Movie.model_validate(response.json())
             self.logger.info(LogMessages.Movies.EDIT_SUCCESS.format(movie.name, movie.id))

@@ -1,8 +1,9 @@
 import functools
+
 import allure
 
-def allure_test_details(story: str, title: str, description: str, severity: str):
 
+def allure_test_details(story: str, title: str, description: str, severity: str):
     def decorator(func):
         @allure.story(story)
         @allure.title(title)
@@ -11,5 +12,7 @@ def allure_test_details(story: str, title: str, description: str, severity: str)
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
+
         return wrapper
-    return decorator 
+
+    return decorator

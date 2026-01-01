@@ -1,8 +1,8 @@
-from playwright.sync_api import Page, expect, Locator
+from playwright.sync_api import Locator, Page, expect
 
 from tests.constants.timeouts import Timeout
-from tests.ui.pages.base_page import BasePage
 from tests.models.request_models import UserCreate
+from tests.ui.pages.base_page import BasePage
 
 
 class RegisterPage(BasePage):
@@ -26,10 +26,10 @@ class RegisterPage(BasePage):
 
     def check_registration_is_successful(self):
         self.page.wait_for_url("**/login", timeout=Timeout.DEFAULT_TIMEOUT.value)
-        
+
         success_message = self.page.get_by_text("Подтвердите свою почту")
         expect(success_message).to_be_visible(timeout=Timeout.DEFAULT_TIMEOUT.value)
 
     def check_error_message(self, message: str):
         error_locator = self.page.get_by_text(message)
-        expect(error_locator.first).to_be_visible() 
+        expect(error_locator.first).to_be_visible()

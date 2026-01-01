@@ -3,9 +3,9 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from tests.models.movie_models import Movie
-from tests.ui.pages.movie_details_page import MovieDetailsPage
-from tests.ui.pages.login_page import LoginPage
 from tests.models.request_models import UserCreate
+from tests.ui.pages.login_page import LoginPage
+from tests.ui.pages.movie_details_page import MovieDetailsPage
 from tests.utils.decorators import allure_test_details
 
 
@@ -13,12 +13,11 @@ from tests.utils.decorators import allure_test_details
 @allure.epic("UI тесты")
 @allure.feature("Страница деталей фильма")
 class TestMovieDetailsPage:
-
     @allure_test_details(
         story="Отображение элементов",
         title="Отображение деталей фильма",
         description="Проверка, что на странице деталей фильма корректно отображаются его основные атрибуты (название, описание и т.д.).",
-        severity=allure.severity_level.NORMAL
+        severity=allure.severity_level.NORMAL,
     )
     def test_movie_details_are_visible(self, page: Page, created_movie: Movie):
         movie_details_page = MovieDetailsPage(page)
@@ -31,7 +30,7 @@ class TestMovieDetailsPage:
         story="Отображение элементов",
         title="Проверка контента на странице деталей фильма",
         description="Проверка, что на странице деталей фильма корректно отображаются его название, описание и жанр.",
-        severity=allure.severity_level.CRITICAL
+        severity=allure.severity_level.CRITICAL,
     )
     def test_movie_details_content(self, page: Page, created_movie: Movie):
         movie_details_page = MovieDetailsPage(page)
@@ -46,7 +45,7 @@ class TestMovieDetailsPage:
         story="Отображение элементов",
         title="Отображение секции с отзывами",
         description="Проверка, что на странице деталей фильма отображается секция с отзывами и сообщение об их отсутствии.",
-        severity=allure.severity_level.NORMAL
+        severity=allure.severity_level.NORMAL,
     )
     def test_reviews_section_is_visible(self, page: Page, created_movie: Movie):
         movie_details_page = MovieDetailsPage(page)
@@ -60,10 +59,11 @@ class TestMovieDetailsPage:
         story="Навигация",
         title="Кнопка 'Купить билет' перенаправляет на страницу оплаты",
         description="Проверка, что после клика на кнопку 'Купить билет' залогиненный пользователь попадает на страницу оплаты именно этого фильма.",
-        severity=allure.severity_level.CRITICAL
+        severity=allure.severity_level.CRITICAL,
     )
-    def test_buy_ticket_button_redirects_to_payment_page(self, page: Page, registered_user_by_api_ui: UserCreate,
-                                                         created_movie: Movie):
+    def test_buy_ticket_button_redirects_to_payment_page(
+        self, page: Page, registered_user_by_api_ui: UserCreate, created_movie: Movie
+    ):
         movie_details_page = MovieDetailsPage(page)
         with allure.step("Авторизоваться пользователем"):
             login_page = LoginPage(page)
@@ -76,4 +76,4 @@ class TestMovieDetailsPage:
             movie_details_page.click_buy_ticket_button()
 
         with allure.step("Проверить URL страницы оплаты"):
-            page.wait_for_url(f"**/payment?movieId={created_movie.id}") 
+            page.wait_for_url(f"**/payment?movieId={created_movie.id}")
