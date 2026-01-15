@@ -25,7 +25,6 @@ jobs:
         run: uv run ruff format --check .
 
   api-tests:
-    if: ${{ secrets.ADMIN_EMAIL != '' && secrets.ADMIN_PASSWORD != '' }}
     runs-on: ubuntu-latest
     env:
       ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
@@ -42,5 +41,9 @@ jobs:
         run: python -m pip install --upgrade uv
       - name: Install dependencies
         run: uv sync --dev
+      - name: Skip API tests if secrets missing
+        if: ${{ env.ADMIN_EMAIL == '' || env.ADMIN_PASSWORD == '' }}
+        run: echo "Skipping API tests because ADMIN_EMAIL/ADMIN_PASSWORD are not set."
       - name: Run API tests
+        if: ${{ env.ADMIN_EMAIL != '' && env.ADMIN_PASSWORD != '' }}
         run: uv run pytest tests/api -m "not ui"
