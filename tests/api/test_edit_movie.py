@@ -14,7 +14,7 @@ from tests.utils.decorators import allure_test_details
 LOGGER = logging.getLogger(__name__)
 
 
-@allure.epic("Movies API")
+@allure.epic("Фильмы")
 @allure.feature("Редактирование фильма")
 class TestEditMovie:
     @allure_test_details(
@@ -31,11 +31,11 @@ class TestEditMovie:
         """,
         severity=allure.severity_level.CRITICAL,
     )
-    def test_edit_movie_name_success(self, admin_api_manager, created_movie):
+    def test_edit_movie_name_success(self, admin_api_manager, created_movie, faker_instance):
         LOGGER.info("Запуск теста: test_edit_movie_name_success")
         movie_id = created_movie.id
         with allure.step("Подготовка: генерация нового названия для фильма"):
-            new_name = "Обновленное название фильма " + MovieDataGenerator.generate_random_title()
+            new_name = "Обновленное название фильма " + MovieDataGenerator.generate_random_title(faker_instance)
             edit_payload = {"name": new_name}
             LOGGER.info(f"Подготовлены данные для редактирования фильма ID {movie_id}: новое имя - '{new_name}'")
 
@@ -82,11 +82,13 @@ class TestEditMovie:
             response = api_manager.movies_api.edit_movie(
                 movie_id=movie_id,
                 payload=edit_payload,
-                expected_status=200,
+                expected_status=401,
             )
         with allure.step("Проверка ответа"):
-            is_movie = isinstance(response, Movie)
-            check.is_true(is_movie, f"Ожидался объект Movie, но получен {type(response)}")
+            is_error = isinstance(response, ErrorResponse)
+            check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
+            if is_error:
+                check.equal(response.statusCode, 401)
 
     @allure_test_details(
         story="Попытка редактирования несуществующего фильма",

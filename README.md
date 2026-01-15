@@ -1,62 +1,62 @@
-# Проект автотестов для API Cinescope
+# Cinescope Autotests
 
-Этот проект содержит автоматизированные тесты для API сервиса Cinescope.
+[![CI](https://github.com/nkrasdev/cinescope-autotests/actions/workflows/ci.yml/badge.svg)](https://github.com/nkrasdev/cinescope-autotests/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/)
+[![Allure Report](https://img.shields.io/badge/Allure%20Report-v3-brightgreen)](https://allurereport.org/docs/v3/)
+[![Ruff](https://img.shields.io/badge/code%20style-ruff-000000)](https://github.com/astral-sh/ruff)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen)](https://pre-commit.com/)
 
-## 🚀 Технологии
+Automated API/UI tests for the Cinescope service.
 
-- **Python 3.10+**
-- **uv:** для управления зависимостями и окружением.
-- **pytest:** для написания и запуска тестов.
-- **requests:** для выполнения HTTP-запросов к API.
-- **Pydantic:** для валидации данных и моделирования объектов API.
-- **Allure:** для создания подробных и наглядных отчетов о выполнении тестов.
+## Stack
 
-## 🛠️ Начало работы
+- Python 3.13+
+- pytest
+- requests
+- pydantic
+- uv
+- Allure Report v3
 
-### Пререквизиты
+## Quickstart
 
-- Установленный **uv**. См. [инструкцию по установке](https://github.com/astral-sh/uv?tab=readme-ov-file#installation).
+```bash
+uv sync
+cp .env.example .env
+```
 
-### Установка и настройка
+Edit `.env` with your credentials and base URLs.
 
-1.  **Клонируйте репозиторий:**
-
-    ```bash
-    git clone <URL вашего репозитория>
-    cd cinescope-tests
-    ```
-
-2.  **Установите зависимости:**
-
-    ```bash
-    uv sync
-    ```
-
-3.  **Настройте переменные окружения:**
-    Создайте файл `.env` в корневой директории проекта, скопировав `.env.example` (если он есть) или создав его с нуля. Заполните его необходимыми данными:
-
-    ```env
-    BASE_URL="http://localhost:3000" # URL вашего API
-    ADMIN_EMAIL="admin@email.com"
-    ADMIN_PASSWORD="admin_password"
-    ```
-
-## ✅ Запуск тестов
-
-Для запуска всех тестов выполните команду из корневой директории:
+## Run Tests
 
 ```bash
 uv run pytest
 ```
 
-Команда автоматически сгенерирует результаты для Allure-отчета в папку `allure-results` (это настроено в `pytest.ini`).
+```bash
+make test-api
+make test-ui
+```
 
-## 📊 Просмотр отчетов Allure
+## Allure Report v3
 
-Для генерации и просмотра HTML-отчета выполните команду:
+Install (global or local):
+
+```bash
+npm install -g allure
+allure --version
+```
+
+```bash
+npm install allure
+npx allure --version
+```
+
+Generate and view report:
 
 ```bash
 allure serve allure-results
 ```
 
-Эта команда откроет отчет в вашем браузере по умолчанию.
+```bash
+npx allure serve allure-results
+```

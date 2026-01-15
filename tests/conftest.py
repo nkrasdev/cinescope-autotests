@@ -1,21 +1,50 @@
 import logging
 import os
 from collections.abc import Generator
+from pathlib import Path
 
 import allure
 import pytest
 import requests
-from clients.api_manager import ApiManager
 from faker import Faker
-from utils.data_generator import MovieDataGenerator, UserDataGenerator
 
+from tests.clients.api_manager import ApiManager
 from tests.constants.endpoints import BASE_URL
 from tests.constants.log_messages import LogMessages
 from tests.models.movie_models import Movie
 from tests.models.request_models import MovieCreate, UserCreate
 from tests.models.user_models import User
+from tests.utils.data_generator import MovieDataGenerator, UserDataGenerator
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _infer_allure_sub_suite(path: Path) -> str:
+    stem = path.stem.lower()
+    if "auth" in stem:
+        return "Аутентификация"
+    if "payment" in stem:
+        return "Платежи"
+    if "movie" in stem or "movies" in stem:
+        return "Фильмы"
+    if "main_page" in stem:
+        return "Главная"
+    return stem.replace("test_", "").replace("_", " ").title()
+
+
+@pytest.fixture(autouse=True)
+def allure_layer_labels(request):
+    path = Path(str(request.node.fspath))
+    posix_path = path.as_posix()
+    if "tests/api/" in posix_path:
+        suite = "API"
+    elif "tests/ui/" in posix_path:
+        suite = "UI"
+    else:
+        suite = "Other"
+    allure.dynamic.parent_suite("Cinescope")
+    allure.dynamic.suite(suite)
+    allure.dynamic.sub_suite(_infer_allure_sub_suite(path))
 
 
 def pytest_sessionstart(session):
@@ -56,7 +85,8 @@ def user_credentials_ui(faker_instance) -> tuple[UserCreate, str]:
 
 
 @pytest.fixture(scope="function")
-def admin_api_manager(api_manager: ApiManager) -> ApiManager:
+def admin_api_manager() -> ApiManager:
+    api_manager = ApiManager(requests.Session(), base_url=BASE_URL)
     api_manager.auth_api.login()
     return api_manager
 
@@ -76,6 +106,33 @@ def created_movie(admin_api_manager, movie_payload: MovieCreate):
     finally:
         if movie_id:
             LOGGER.info(f"Фикстура 'created_movie': удаляем фильм с ID {movie_id}.")
+            try:
+                admin_api_manager.movies_api.delete_movie(movie_id, expected_status=200)
+                LOGGER.info(f"Фильм с ID {movie_id} успешно удален фикстурой.")
+            except AssertionError:
+                LOGGER.warning(
+                    f"Не удалось удалить фильм с ID {movie_id} в teardown фикстуры. Возможно, он уже был удален в тесте."
+                )
+
+
+@pytest.fixture
+def created_movie_unpublished(admin_api_manager, movie_payload: MovieCreate):
+    LOGGER.info("Фикстура 'created_movie_unpublished': создаем неопубликованный фильм.")
+    movie_id = None
+    payload = movie_payload.model_copy(update={"published": False})
+    try:
+        created_movie_model = admin_api_manager.movies_api.create_movie(movie_data=payload, expected_status=201)
+        assert isinstance(created_movie_model, Movie), (
+            "Фикстура 'created_movie_unpublished' ожидала успешного создания фильма"
+        )
+        movie_id = created_movie_model.id
+        LOGGER.info(f"Неопубликованный фильм с ID {movie_id} успешно создан фикстурой.")
+
+        yield created_movie_model
+
+    finally:
+        if movie_id:
+            LOGGER.info(f"Фикстура 'created_movie_unpublished': удаляем фильм с ID {movie_id}.")
             try:
                 admin_api_manager.movies_api.delete_movie(movie_id, expected_status=200)
                 LOGGER.info(f"Фильм с ID {movie_id} успешно удален фикстурой.")
@@ -114,7 +171,7 @@ def registered_user_by_api_ui(api_manager: ApiManager, user_credentials_ui: tupl
 @pytest.fixture
 def new_registered_user(
     user_credentials: tuple[UserCreate, str],
-) -> Generator[tuple[ApiManager, UserCreate], None, None]:
+) -> Generator[tuple[ApiManager, UserCreate]]:
     LOGGER.info("Фикстура 'new_registered_user': регистрируем нового пользователя.")
     user_payload, password_repeat = user_credentials
     session = requests.Session()

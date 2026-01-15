@@ -8,13 +8,12 @@ from tests.constants.endpoints import NON_EXISTENT_ID
 from tests.constants.log_messages import LogMessages
 from tests.models.movie_models import Movie
 from tests.models.response_models import DeletedObject, ErrorResponse
-from tests.utils.data_generator import MovieDataGenerator
 from tests.utils.decorators import allure_test_details
 
 LOGGER = logging.getLogger(__name__)
 
 
-@allure.epic("Movies API")
+@allure.epic("Фильмы")
 @allure.feature("Удаление фильма")
 class TestDeleteMovie:
     @allure_test_details(
@@ -30,12 +29,11 @@ class TestDeleteMovie:
         """,
         severity=allure.severity_level.CRITICAL,
     )
-    def test_delete_movie_success(self, admin_api_manager):
+    def test_delete_movie_success(self, admin_api_manager, movie_payload):
         LOGGER.info("Запуск теста: test_delete_movie_success")
         with allure.step("Подготовка: создание нового фильма для последующего удаления"):
-            payload = MovieDataGenerator.generate_valid_movie_payload()
-            LOGGER.info(f"Создание тестового фильма с названием: '{payload.name}'")
-            created_movie_response = admin_api_manager.movies_api.create_movie(payload, expected_status=201)
+            LOGGER.info(f"Создание тестового фильма с названием: '{movie_payload.name}'")
+            created_movie_response = admin_api_manager.movies_api.create_movie(movie_payload, expected_status=201)
             is_movie = isinstance(created_movie_response, Movie)
             check.is_true(is_movie, f"Ожидался объект Movie, но получен {type(created_movie_response)}")
             if not is_movie:
@@ -75,11 +73,13 @@ class TestDeleteMovie:
             LOGGER.info(f"Попытка удаления фильма с ID {movie_id} без авторизации")
             response = api_manager.movies_api.delete_movie(
                 movie_id=movie_id,
-                expected_status=200,
+                expected_status=401,
             )
         with allure.step("Проверка ответа об ошибке 'Unauthorized'"):
-            is_deleted = isinstance(response, DeletedObject)
-            check.is_true(is_deleted, f"Ожидался объект DeletedObject, но получен {type(response)}")
+            is_error = isinstance(response, ErrorResponse)
+            check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
+            if is_error:
+                check.equal(response.statusCode, 401)
 
     @allure_test_details(
         story="Попытка удаления несуществующего фильма",

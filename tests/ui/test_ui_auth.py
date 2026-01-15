@@ -12,8 +12,8 @@ from tests.utils.decorators import allure_test_details
 
 
 @pytest.mark.ui
-@allure.epic("UI тесты")
-@allure.feature("Аутентификация")
+@allure.epic("Аутентификация")
+@allure.feature("Вход и регистрация")
 class TestUIAuth:
     @allure_test_details(
         story="Регистрация нового пользователя",
@@ -64,8 +64,12 @@ class TestUIAuth:
         with allure.step("Проверить, что пользователь вошел в систему"):
             login_page.check_user_is_logged_in()
 
-    @allure.story("Логин")
-    @allure.title("Логин с невалидными кредами")
+    @allure_test_details(
+        story="Невалидные учетные данные",
+        title="Логин с невалидными кредами",
+        description="Проверка, что при вводе неверных учетных данных отображается ошибка авторизации.",
+        severity=allure.severity_level.NORMAL,
+    )
     def test_login_with_invalid_credentials(self, page: Page, faker_instance: Faker):
         login_page = LoginPage(page)
         login_page.open()
@@ -76,8 +80,12 @@ class TestUIAuth:
 
         login_page.check_error_message("Неверная почта или пароль")
 
-    @allure.story("Регистрация")
-    @allure.title("Регистрация с несовпадающими паролями")
+    @allure_test_details(
+        story="Регистрация с ошибками",
+        title="Регистрация с несовпадающими паролями",
+        description="Проверка, что UI показывает ошибку при несовпадении паролей при регистрации.",
+        severity=allure.severity_level.NORMAL,
+    )
     def test_registration_with_mismatched_passwords(self, page: Page, user_credentials_ui: tuple[UserCreate, str]):
         user, _ = user_credentials_ui
         register_page = RegisterPage(page)
@@ -85,8 +93,12 @@ class TestUIAuth:
         register_page.register_user(user, "different_password")
         register_page.check_error_message("Пароль не соответствует требованиям")
 
-    @allure.story("Регистрация")
-    @allure.title("Регистрация со слабым паролем")
+    @allure_test_details(
+        story="Регистрация с ошибками",
+        title="Регистрация со слабым паролем",
+        description="Проверка, что UI показывает ошибку при попытке регистрации со слабым паролем.",
+        severity=allure.severity_level.NORMAL,
+    )
     def test_registration_with_weak_password(self, page: Page, user_credentials_ui: tuple[UserCreate, str]):
         user, _ = user_credentials_ui
         user.password = "123"

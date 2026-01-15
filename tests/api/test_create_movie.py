@@ -7,12 +7,13 @@ import pytest_check as check
 from tests.constants.log_messages import LogMessages
 from tests.models.movie_models import Movie
 from tests.models.response_models import ErrorResponse
+from tests.utils.data_generator import MovieDataGenerator
 from tests.utils.decorators import allure_test_details
 
 LOGGER = logging.getLogger(__name__)
 
 
-@allure.epic("Movies API")
+@allure.epic("Фильмы")
 @allure.feature("Создание фильма")
 class TestCreateMovie:
     @allure_test_details(
@@ -124,6 +125,32 @@ class TestCreateMovie:
                 check.is_in("location", all_error_messages)
 
     @allure_test_details(
+        story="Попытка создания фильма с неполными данными",
+        title="Тест ошибки создания фильма с отсутствующим обязательным полем",
+        description="Этот тест проверяет, что система возвращает ошибку 400 при отсутствии обязательного поля.",
+        severity=allure.severity_level.NORMAL,
+    )
+    @pytest.mark.parametrize("missing_field", ["name", "description", "price", "location", "genreId"])
+    def test_create_movie_bad_request_missing_field(self, admin_api_manager, faker_instance, missing_field):
+        allure.dynamic.title(f"Тест создания фильма без обязательного поля: '{missing_field}'")
+        LOGGER.info(f"Запуск теста: отсутствует поле '{missing_field}'")
+        with allure.step(f"Подготовка данных без поля '{missing_field}'"):
+            invalid_payload_dict = MovieDataGenerator.generate_movie_payload_missing_field(
+                faker_instance, missing_field
+            )
+
+        with allure.step("Отправка запроса на создание фильма с отсутствующим полем"):
+            LOGGER.info(f"Попытка создания фильма без поля '{missing_field}'")
+            response = admin_api_manager.movies_api.create_movie(movie_data=invalid_payload_dict, expected_status=400)
+        with allure.step("Проверка ответа об ошибке 'Bad Request'"):
+            is_error = isinstance(response, ErrorResponse)
+            check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
+            if is_error:
+                check.equal(response.error, "Bad Request")
+                check.equal(response.statusCode, 400)
+                check.is_true(len(str(response.message)) > 0, "Сообщение об ошибке не должно быть пустым")
+
+    @allure_test_details(
         story="Попытка создания фильма с невалидными типами данных",
         title="Тест создания фильма с невалидными типами данных в полях",
         description="Этот тест проверяет, что система возвращает ошибку 400 Bad Request при отправке неверных типов данных в полях.",
@@ -134,15 +161,16 @@ class TestCreateMovie:
         [("name", 12345), ("price", "сто рублей"), ("location", "New York"), ("genreId", "первый жанр")],
     )
     def test_create_movie_bad_request_invalid_types(
-        self, admin_api_manager, movie_payload, field_to_break, invalid_value
+        self, admin_api_manager, faker_instance, field_to_break, invalid_value
     ):
         allure.dynamic.title(f"Тест создания фильма с невалидным полем: '{field_to_break}'")
         LOGGER.info(f"Запуск теста: невалидный тип для поля '{field_to_break}'")
         with allure.step(
             f"Подготовка невалидных данных: в поле '{field_to_break}' установлено значение '{invalid_value}'"
         ):
-            invalid_payload_dict = movie_payload.model_dump(by_alias=True)
-            invalid_payload_dict[field_to_break] = invalid_value
+            invalid_payload_dict = MovieDataGenerator.generate_movie_payload_with_invalid_field(
+                faker_instance, field_to_break, invalid_value
+            )
 
         with allure.step("Отправка запроса на создание фильма с невалидными данными"):
             LOGGER.info(f"Попытка создания фильма с невалидным типом для поля '{field_to_break}': {invalid_value}")

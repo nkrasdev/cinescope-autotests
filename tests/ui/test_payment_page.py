@@ -2,7 +2,7 @@ import allure
 import pytest
 from playwright.sync_api import Page
 
-from tests.constants.endpoints import CARD_NUMBER, CVC, EXP_MONTH, EXP_YEAR, HOLDER_NAME
+from tests.constants.ui_data import CARD_NUMBER, CVC, EXP_MONTH, EXP_YEAR, HOLDER_NAME
 from tests.models.request_models import UserCreate
 from tests.ui.pages.login_page import LoginPage
 from tests.ui.pages.main_page import MainPage
@@ -12,7 +12,7 @@ from tests.utils.decorators import allure_test_details
 
 
 @pytest.mark.ui
-@allure.epic("UI тесты")
+@allure.epic("Платежи")
 @allure.feature("Страница оплаты")
 class TestPaymentPage:
     @pytest.fixture(autouse=True)

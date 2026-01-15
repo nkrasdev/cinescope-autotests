@@ -31,11 +31,12 @@ class CustomRequester:
         expected_status = kwargs.pop("expected_status", None)
 
         request_kwargs = kwargs
-        if params:
+        request_kwargs.setdefault("timeout", 30)
+        if params is not None:
             request_kwargs["params"] = params
-        if data:
+        if data is not None:
             request_kwargs["data"] = data
-        if json_data:
+        if json_data is not None:
             request_kwargs["json"] = json_data
 
         step_name = f"Выполнение {method.upper()} запроса на {url}"
@@ -77,19 +78,19 @@ class CustomRequester:
             name="Request Line",
             attachment_type=allure.attachment_type.TEXT,
         )
-        if params:
+        if params is not None:
             allure.attach(
                 body=json.dumps(params, indent=4, ensure_ascii=False),
                 name="Query Parameters",
                 attachment_type=allure.attachment_type.JSON,
             )
-        if json_data:
+        if json_data is not None:
             allure.attach(
                 body=json.dumps(json_data, indent=4, ensure_ascii=False),
                 name="Request Body (JSON)",
                 attachment_type=allure.attachment_type.JSON,
             )
-        if data:
+        if data is not None:
             allure.attach(
                 body=str(data),
                 name="Request Body (Data)",
@@ -118,7 +119,13 @@ class CustomRequester:
             GREEN = "\033[32m"
             RED = "\033[31m"
             RESET = "\033[0m"
-            headers = " \\\n".join([f"-H '{header}: {value}'" for header, value in request.headers.items()])
+            headers = []
+            for header, value in request.headers.items():
+                display_value = value
+                if header.lower() == "authorization":
+                    display_value = "Bearer <redacted>"
+                headers.append(f"-H '{header}: {display_value}'")
+            headers = " \\\n".join(headers)
             full_test_name = f"pytest {os.environ.get('PYTEST_CURRENT_TEST', '').replace(' (call)', '')}"
 
             body = ""

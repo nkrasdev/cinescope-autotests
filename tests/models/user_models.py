@@ -13,5 +13,12 @@ class User(BaseModel):
     full_name: str = Field(alias="fullName")
     roles: list[str]
     verified: bool
-    banned: bool
+    banned: bool = False
     created_at: datetime = Field(alias="createdAt")
+
+
+class UserSummary(BaseModel):
+    id: str
+    email: str
+    full_name: str = Field(alias="fullName")
+    roles: list[str]

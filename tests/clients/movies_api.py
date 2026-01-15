@@ -1,5 +1,4 @@
 import logging
-from typing import TypeAlias
 
 import requests
 
@@ -11,10 +10,10 @@ from tests.models.request_models import MovieCreate
 from tests.models.response_models import DeletedObject, ErrorResponse, MoviesList
 from tests.request.custom_requester import CustomRequester
 
-MovieResponse: TypeAlias = Movie | ErrorResponse
-DeletedMovieResponse: TypeAlias = DeletedObject | ErrorResponse
-MovieWithReviewsResponse: TypeAlias = MovieWithReviews | ErrorResponse
-MoviesListResponse: TypeAlias = MoviesList | ErrorResponse
+type MovieResponse = Movie | ErrorResponse
+type DeletedMovieResponse = DeletedObject | ErrorResponse
+type MovieWithReviewsResponse = MovieWithReviews | ErrorResponse
+type MoviesListResponse = MoviesList | ErrorResponse
 
 
 class MoviesAPI(CustomRequester):

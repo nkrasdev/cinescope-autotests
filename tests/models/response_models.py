@@ -1,12 +1,12 @@
 from pydantic import BaseModel, Field
 
 from tests.models.movie_models import Movie
-from tests.models.user_models import User
+from tests.models.user_models import UserSummary
 
 
 class LoginResponse(BaseModel):
     access_token: str = Field(alias="accessToken")
-    user: User
+    user: UserSummary
 
 
 class MoviesList(BaseModel):

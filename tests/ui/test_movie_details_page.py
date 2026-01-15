@@ -10,7 +10,7 @@ from tests.utils.decorators import allure_test_details
 
 
 @pytest.mark.ui
-@allure.epic("UI тесты")
+@allure.epic("Фильмы")
 @allure.feature("Страница деталей фильма")
 class TestMovieDetailsPage:
     @allure_test_details(

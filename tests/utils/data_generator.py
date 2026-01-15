@@ -1,5 +1,6 @@
 import logging
 import random
+from typing import Any
 
 from faker import Faker
 
@@ -47,6 +48,20 @@ class MovieDataGenerator:
             published=MovieDataGenerator.generate_random_published(),
         )
         logger.debug(f"Сгенерированы данные для создания фильма: {payload.model_dump_json(indent=2)}")
+        return payload
+
+    @staticmethod
+    def generate_movie_payload_missing_field(faker: Faker, field: str) -> dict[str, Any]:
+        payload = MovieDataGenerator.generate_valid_movie_payload(faker).model_dump(by_alias=True)
+        payload.pop(field, None)
+        return payload
+
+    @staticmethod
+    def generate_movie_payload_with_invalid_field(
+        faker: Faker, field: str, value: Any, *, by_alias: bool = True
+    ) -> dict[str, Any]:
+        payload = MovieDataGenerator.generate_valid_movie_payload(faker).model_dump(by_alias=by_alias)
+        payload[field] = value
         return payload
 
 

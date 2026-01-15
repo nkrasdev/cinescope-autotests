@@ -9,7 +9,7 @@ from tests.utils.decorators import allure_test_details
 
 
 @pytest.mark.ui
-@allure.epic("UI тесты")
+@allure.epic("Фильмы")
 @allure.feature("Страница со списком фильмов")
 class TestMoviesPage:
     @pytest.fixture(scope="function", autouse=True)

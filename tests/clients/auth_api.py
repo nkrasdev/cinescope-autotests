@@ -1,5 +1,4 @@
 import logging
-from typing import TypeAlias
 
 import requests
 
@@ -16,8 +15,8 @@ from tests.models.response_models import ErrorResponse, LoginResponse
 from tests.models.user_models import User
 from tests.request.custom_requester import CustomRequester
 
-LoginApiResponse: TypeAlias = LoginResponse | ErrorResponse
-RegisterApiResponse: TypeAlias = User | ErrorResponse
+type LoginApiResponse = LoginResponse | ErrorResponse
+type RegisterApiResponse = User | ErrorResponse
 
 
 class AuthAPI(CustomRequester):
@@ -29,7 +28,7 @@ class AuthAPI(CustomRequester):
         self,
         email: str | None = ADMIN_EMAIL,
         password: str | None = ADMIN_PASSWORD,
-        expected_status: int = 200,
+        expected_status: int = 201,
     ) -> LoginApiResponse:
         if not email or not password:
             raise ValueError("ADMIN_EMAIL и ADMIN_PASSWORD должны быть указаны в .env file")

@@ -13,7 +13,7 @@ from tests.utils.decorators import allure_test_details
 LOGGER = logging.getLogger(__name__)
 
 
-@allure.epic("Movies API")
+@allure.epic("Фильмы")
 @allure.feature("Получение фильма по ID")
 class TestGetMovieById:
     @allure_test_details(

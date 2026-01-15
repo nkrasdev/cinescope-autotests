@@ -34,7 +34,7 @@ class TestAuthentication:
         with allure.step("Попытка входа в систему с учетными данными нового пользователя"):
             LOGGER.info(LogMessages.Auth.ATTEMPT_LOGIN.format(user_payload.email))
             login_response = api_manager.auth_api.login(
-                email=user_payload.email, password=user_payload.password, expected_status=200
+                email=user_payload.email, password=user_payload.password, expected_status=201
             )
 
         with allure.step("Проверка, что ответ API имеет ожидаемый тип LoginResponse"):
@@ -54,8 +54,5 @@ class TestAuthentication:
                 user_object.full_name, user_payload.full_name, f"Имя пользователя должно быть {user_payload.full_name}"
             )
             check.equal(user_object.roles, ["USER"], "Роль пользователя должна быть 'USER'")
-            check.is_true(user_object.verified, "Пользователь должен быть верифицирован")
-            check.is_false(user_object.banned, "Пользователь не должен быть забанен")
             check.is_not_none(user_object.id, "ID пользователя не должен быть пустым")
-            check.is_not_none(user_object.created_at, "Дата создания пользователя не должна быть пустой")
             LOGGER.info("Детальная проверка полей в ответе завершена успешно.")

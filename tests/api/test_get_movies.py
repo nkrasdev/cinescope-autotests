@@ -5,14 +5,14 @@ import pytest
 import pytest_check as check
 
 from tests.constants.log_messages import LogMessages
-from tests.models.movie_models import Movie
+from tests.models.movie_models import Location, Movie
 from tests.models.response_models import ErrorResponse, MoviesList
 from tests.utils.decorators import allure_test_details
 
 LOGGER = logging.getLogger(__name__)
 
 
-@allure.epic("Movies API")
+@allure.epic("Фильмы")
 @allure.feature("Получение списка фильмов")
 class TestGetMovies:
     @allure_test_details(
@@ -94,7 +94,7 @@ class TestGetMovies:
         movie_id = None
         try:
             with allure.step("Подготовка: создание фильма с локацией 'MSK'"):
-                movie_payload.location = "MSK"
+                movie_payload.location = Location.MSK
                 created_movie_response = admin_api_manager.movies_api.create_movie(movie_payload)
                 is_movie = isinstance(created_movie_response, Movie)
                 check.is_true(is_movie, f"Ожидался объект Movie, но получен {type(created_movie_response)}")
@@ -229,7 +229,7 @@ class TestGetMovies:
             check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
             if is_error:
                 check.equal(response.statusCode, 400)
-                check.is_in("locations", str(response.message))
+                check.equal(response.message, "Некорректные данные")
 
     @allure_test_details(
         story="Невалидные параметры запроса",

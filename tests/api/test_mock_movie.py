@@ -15,8 +15,8 @@ from tests.utils.decorators import allure_test_details
 LOGGER = logging.getLogger(__name__)
 
 
-@allure.epic("Мок тесты")
-@allure.feature("Тесты с использованием моков")
+@allure.epic("Фильмы")
+@allure.feature("Моки")
 class TestMockingExamples:
     @allure_test_details(
         story="Использование мока для изоляции сервисов",
