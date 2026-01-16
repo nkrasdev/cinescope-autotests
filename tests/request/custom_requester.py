@@ -59,6 +59,9 @@ class CustomRequester:
     def patch(self, endpoint: str, data: Any = None, json: Any = None, **kwargs) -> requests.Response:
         return self._send_request("PATCH", endpoint, data=data, json_data=json, **kwargs)
 
+    def put(self, endpoint: str, data: Any = None, json: Any = None, **kwargs) -> requests.Response:
+        return self._send_request("PUT", endpoint, data=data, json_data=json, **kwargs)
+
     def delete(self, endpoint: str, data: Any = None, json: Any = None, **kwargs) -> requests.Response:
         return self._send_request("DELETE", endpoint, data=data, json_data=json, **kwargs)
 

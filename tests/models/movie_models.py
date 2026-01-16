@@ -24,12 +24,12 @@ class Genre(BaseModel):
 
 
 class Review(BaseModel):
-    user_id: int | None = Field(None, alias="userId")
+    user_id: str | None = Field(None, alias="userId")
     rating: int | None = None
     text: str | None = None
     hidden: bool | None = None
     created_at: datetime | None = Field(None, alias="createdAt")
-    user: UserInReview
+    user: UserInReview | None = None
 
 
 class Movie(BaseModel):

@@ -5,6 +5,8 @@ import pytest_check as check
 
 from tests.constants.log_messages import LogMessages
 from tests.models.response_models import LoginResponse
+from tests.models.user_models import User
+from tests.utils.data_generator import UserDataGenerator
 from tests.utils.decorators import allure_test_details
 
 LOGGER = logging.getLogger(__name__)
@@ -56,3 +58,72 @@ class TestAuthentication:
             check.equal(user_object.roles, ["USER"], "Роль пользователя должна быть 'USER'")
             check.is_not_none(user_object.id, "ID пользователя не должен быть пустым")
             LOGGER.info("Детальная проверка полей в ответе завершена успешно.")
+
+
+@allure.epic("Аутентификация")
+@allure.feature("Регистрация")
+class TestRegistration:
+    @allure_test_details(
+        story="Регистрация нового пользователя",
+        title="Тест успешной регистрации пользователя",
+        description="Проверка, что API регистрирует нового пользователя и возвращает его данные.",
+        severity=allure.severity_level.CRITICAL,
+    )
+    def test_register_user_success(self, api_manager, admin_api_manager, faker_instance):
+        LOGGER.info("Запуск теста: test_register_user_success")
+        user_payload, password_repeat = UserDataGenerator.generate_user_payload(faker_instance)
+        payload = user_payload.model_dump(by_alias=True)
+        payload["passwordRepeat"] = password_repeat
+        user_id = None
+        try:
+            with allure.step("Отправка запроса на регистрацию нового пользователя"):
+                response = api_manager.auth_api.register(user_data=payload, expected_status=201)
+            is_user = isinstance(response, User)
+            check.is_true(is_user, f"Ожидался объект User, но получен {type(response)}")
+            if is_user:
+                user_id = response.id
+                check.equal(response.email, user_payload.email)
+                check.equal(response.full_name, user_payload.full_name)
+        finally:
+            if user_id:
+                admin_api_manager.users_api.delete_user(user_id, expected_status=200)
+
+
+@allure.epic("Аутентификация")
+@allure.feature("Сессия")
+class TestSession:
+    @allure_test_details(
+        story="Обновление токена",
+        title="Тест обновления токенов авторизованного пользователя",
+        description="Проверка, что refresh-токен обновляется для авторизованного пользователя.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_refresh_tokens(self, admin_api_manager):
+        LOGGER.info("Запуск теста: test_refresh_tokens")
+        with allure.step("Запрос обновления токенов"):
+            response = admin_api_manager.auth_api.refresh_token(expected_status=200)
+        check.is_true(isinstance(response, dict), "Ожидался ответ в виде словаря")
+
+    @allure_test_details(
+        story="Выход из аккаунта",
+        title="Тест logout авторизованного пользователя",
+        description="Проверка, что logout возвращает успешный ответ.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_logout(self, admin_api_manager):
+        LOGGER.info("Запуск теста: test_logout")
+        with allure.step("Запрос logout"):
+            response = admin_api_manager.auth_api.logout(expected_status=200)
+        check.is_true(isinstance(response, dict), "Ожидался ответ в виде словаря")
+
+    @allure_test_details(
+        story="Подтверждение email",
+        title="Тест подтверждения email с невалидным токеном",
+        description="Проверка, что API возвращает ошибку при подтверждении email с невалидным токеном.",
+        severity=allure.severity_level.MINOR,
+    )
+    def test_confirm_email_invalid_token(self, api_manager):
+        LOGGER.info("Запуск теста: test_confirm_email_invalid_token")
+        with allure.step("Запрос подтверждения email с невалидным токеном"):
+            response = api_manager.auth_api.confirm_email(token="invalid-token", expected_status=400)
+        check.is_true(isinstance(response, dict), "Ожидался ответ в виде словаря")

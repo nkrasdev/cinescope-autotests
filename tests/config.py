@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     base_url: str = Field(default="https://api.dev-cinescope.coconutqa.ru")
     base_ui_url: str = Field(default="https://dev-cinescope.coconutqa.ru")
     base_auth_url: str = Field(default="https://auth.dev-cinescope.coconutqa.ru")
+    base_payment_url: str = Field(default="https://payment.dev-cinescope.coconutqa.ru")
 
     admin_email: str = Field(default=None)
     admin_password: str = Field(default=None)

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from tests.models.movie_models import Movie
-from tests.models.user_models import UserSummary
+from tests.models.user_models import User, UserSummary
 
 
 class LoginResponse(BaseModel):
@@ -25,3 +25,15 @@ class ErrorResponse(BaseModel):
 
 class DeletedObject(BaseModel):
     id: int
+
+
+class GenreResponse(BaseModel):
+    id: int
+    name: str
+
+
+class UsersListResponse(BaseModel):
+    users: list[User]
+    count: int
+    page: int
+    page_size: int = Field(alias="pageSize")

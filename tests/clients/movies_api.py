@@ -3,17 +3,29 @@ import logging
 import requests
 
 from tests.clients.auth_api import AuthAPI
-from tests.constants.endpoints import CREATE_MOVIE_ENDPOINT, MOVIE_BY_ID_ENDPOINT, MOVIES_ENDPOINT
+from tests.constants.endpoints import (
+    CREATE_MOVIE_ENDPOINT,
+    GENRE_BY_ID_ENDPOINT,
+    GENRES_ENDPOINT,
+    MOVIE_BY_ID_ENDPOINT,
+    MOVIES_ENDPOINT,
+    REVIEW_HIDE_ENDPOINT,
+    REVIEW_SHOW_ENDPOINT,
+    REVIEWS_ENDPOINT,
+)
 from tests.constants.log_messages import LogMessages
-from tests.models.movie_models import Movie, MovieWithReviews
+from tests.models.movie_models import Movie, MovieWithReviews, Review
 from tests.models.request_models import MovieCreate
-from tests.models.response_models import DeletedObject, ErrorResponse, MoviesList
+from tests.models.response_models import DeletedObject, ErrorResponse, GenreResponse, MoviesList
 from tests.request.custom_requester import CustomRequester
 
 type MovieResponse = Movie | ErrorResponse
 type DeletedMovieResponse = DeletedObject | ErrorResponse
 type MovieWithReviewsResponse = MovieWithReviews | ErrorResponse
 type MoviesListResponse = MoviesList | ErrorResponse
+type ReviewsResponse = list[Review] | Review | ErrorResponse
+type GenresResponse = list[GenreResponse] | ErrorResponse
+type GenreResponseModel = GenreResponse | ErrorResponse
 
 
 class MoviesAPI(CustomRequester):
@@ -94,3 +106,85 @@ class MoviesAPI(CustomRequester):
         error = ErrorResponse.model_validate(response.json())
         self.logger.error(f"Ошибка редактирования фильма {movie_id}: {error.message} (status: {error.statusCode})")
         return error
+
+    def get_reviews(self, movie_id: int | str, expected_status: int = 200) -> ReviewsResponse:
+        self.logger.info(f"Попытка получения отзывов для фильма {movie_id}")
+        response = self.get(REVIEWS_ENDPOINT.format(movie_id=movie_id), expected_status=expected_status)
+        if response.ok:
+            data = response.json()
+            return [Review.model_validate(item) for item in data]
+        return ErrorResponse.model_validate(response.json())
+
+    def create_review(self, movie_id: int | str, payload: dict, expected_status: int = 201) -> ReviewsResponse:
+        self.logger.info(f"Попытка создания отзыва для фильма {movie_id}")
+        response = self.post(REVIEWS_ENDPOINT.format(movie_id=movie_id), json=payload, expected_status=expected_status)
+        if response.ok:
+            data = response.json()
+            if isinstance(data, list):
+                return [Review.model_validate(item) for item in data]
+            return Review.model_validate(data)
+        return ErrorResponse.model_validate(response.json())
+
+    def edit_review(self, movie_id: int | str, payload: dict, expected_status: int = 200) -> ReviewsResponse:
+        self.logger.info(f"Попытка редактирования отзыва для фильма {movie_id}")
+        response = self.put(REVIEWS_ENDPOINT.format(movie_id=movie_id), json=payload, expected_status=expected_status)
+        if response.ok:
+            return Review.model_validate(response.json())
+        return ErrorResponse.model_validate(response.json())
+
+    def delete_review(self, movie_id: int | str, expected_status: int = 200) -> ReviewsResponse:
+        self.logger.info(f"Попытка удаления отзыва для фильма {movie_id}")
+        response = self.delete(REVIEWS_ENDPOINT.format(movie_id=movie_id), expected_status=expected_status)
+        if response.ok:
+            if response.content:
+                return Review.model_validate(response.json())
+            return []
+        return ErrorResponse.model_validate(response.json())
+
+    def hide_review(self, movie_id: int | str, user_id: str, expected_status: int = 200) -> ReviewsResponse:
+        self.logger.info(f"Попытка скрыть отзыв для фильма {movie_id} от пользователя {user_id}")
+        response = self.patch(
+            REVIEW_HIDE_ENDPOINT.format(movie_id=movie_id, user_id=user_id), expected_status=expected_status
+        )
+        if response.ok:
+            return Review.model_validate(response.json())
+        return ErrorResponse.model_validate(response.json())
+
+    def show_review(self, movie_id: int | str, user_id: str, expected_status: int = 200) -> ReviewsResponse:
+        self.logger.info(f"Попытка показать отзыв для фильма {movie_id} от пользователя {user_id}")
+        response = self.patch(
+            REVIEW_SHOW_ENDPOINT.format(movie_id=movie_id, user_id=user_id), expected_status=expected_status
+        )
+        if response.ok:
+            return Review.model_validate(response.json())
+        return ErrorResponse.model_validate(response.json())
+
+    def get_genres(self, expected_status: int = 200) -> GenresResponse:
+        self.logger.info("Попытка получения списка жанров")
+        response = self.get(GENRES_ENDPOINT, expected_status=expected_status)
+        if response.ok:
+            return [GenreResponse.model_validate(item) for item in response.json()]
+        return ErrorResponse.model_validate(response.json())
+
+    def get_genre_by_id(self, genre_id: int | str, expected_status: int = 200) -> GenreResponseModel:
+        self.logger.info(f"Попытка получения жанра {genre_id}")
+        response = self.get(GENRE_BY_ID_ENDPOINT.format(genre_id=genre_id), expected_status=expected_status)
+        if response.ok:
+            return GenreResponse.model_validate(response.json())
+        return ErrorResponse.model_validate(response.json())
+
+    def create_genre(self, payload: dict, expected_status: int = 201) -> GenreResponseModel:
+        self.logger.info(f"Попытка создания жанра {payload.get('name')}")
+        response = self.post(GENRES_ENDPOINT, json=payload, expected_status=expected_status)
+        if response.ok:
+            return GenreResponse.model_validate(response.json())
+        return ErrorResponse.model_validate(response.json())
+
+    def delete_genre(self, genre_id: int | str, expected_status: int = 200) -> GenreResponseModel:
+        self.logger.info(f"Попытка удаления жанра {genre_id}")
+        response = self.delete(GENRE_BY_ID_ENDPOINT.format(genre_id=genre_id), expected_status=expected_status)
+        if response.ok:
+            if response.content:
+                return GenreResponse.model_validate(response.json())
+            return GenreResponse(id=int(genre_id), name="")
+        return ErrorResponse.model_validate(response.json())

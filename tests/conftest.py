@@ -65,8 +65,13 @@ def faker_instance() -> Faker:
 
 
 @pytest.fixture(scope="function")
-def api_manager() -> ApiManager:
-    return ApiManager(requests.Session(), base_url=BASE_URL)
+def api_manager() -> Generator[ApiManager]:
+    session = requests.Session()
+    manager = ApiManager(session, base_url=BASE_URL)
+    try:
+        yield manager
+    finally:
+        session.close()
 
 
 @pytest.fixture()
@@ -85,10 +90,14 @@ def user_credentials_ui(faker_instance) -> tuple[UserCreate, str]:
 
 
 @pytest.fixture(scope="function")
-def admin_api_manager() -> ApiManager:
-    api_manager = ApiManager(requests.Session(), base_url=BASE_URL)
-    api_manager.auth_api.login()
-    return api_manager
+def admin_api_manager() -> Generator[ApiManager]:
+    session = requests.Session()
+    manager = ApiManager(session, base_url=BASE_URL)
+    manager.auth_api.login()
+    try:
+        yield manager
+    finally:
+        session.close()
 
 
 @pytest.fixture
@@ -160,12 +169,24 @@ def pytest_runtest_makereport(item, call):
 
 
 @pytest.fixture
-def registered_user_by_api_ui(api_manager: ApiManager, user_credentials_ui: tuple[UserCreate, str]) -> UserCreate:
+def registered_user_by_api_ui(
+    api_manager: ApiManager, admin_api_manager: ApiManager, user_credentials_ui: tuple[UserCreate, str]
+) -> Generator[UserCreate]:
     user_payload, password_repeat = user_credentials_ui
     register_data = user_payload.model_dump(by_alias=True)
     register_data["passwordRepeat"] = password_repeat
-    api_manager.auth_api.register(user_data=register_data, expected_status=201)
-    return user_payload
+    response = api_manager.auth_api.register(user_data=register_data, expected_status=201)
+    user_id = response.id if isinstance(response, User) else None
+    try:
+        yield user_payload
+    finally:
+        if user_id:
+            try:
+                admin_api_manager.users_api.delete_user(user_id, expected_status=200)
+            except AssertionError:
+                LOGGER.warning(
+                    f"Не удалось удалить пользователя {user_id} в teardown. Возможно, он уже удален в тесте."
+                )
 
 
 @pytest.fixture
@@ -177,12 +198,14 @@ def new_registered_user(
     session = requests.Session()
     api_manager = ApiManager(session, base_url=BASE_URL)
 
+    user_id = None
     try:
         register_data = user_payload.model_dump(by_alias=True)
         register_data["passwordRepeat"] = password_repeat
         registration_response = api_manager.auth_api.register(user_data=register_data, expected_status=201)
         assert isinstance(registration_response, User), "Фикстура 'new_registered_user' ожидала успешной регистрации"
         LOGGER.info(f"Пользователь с email {user_payload.email} успешно зарегистрирован фикстурой.")
+        user_id = registration_response.id
 
     except ValueError as e:
         LOGGER.error(f"Регистрация пользователя {user_payload.email} провалилась: {e}")
@@ -192,4 +215,11 @@ def new_registered_user(
         del api_manager.session.headers["Authorization"]
 
     yield api_manager, user_payload
+    if user_id:
+        try:
+            api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=201)
+            api_manager.users_api.delete_user(user_id, expected_status=200)
+        except AssertionError:
+            LOGGER.warning(f"Не удалось удалить пользователя {user_id} в teardown фикстуры.")
+    session.close()
     LOGGER.info(f"Фикстура 'new_registered_user' для пользователя {user_payload.email} завершила свою работу.")

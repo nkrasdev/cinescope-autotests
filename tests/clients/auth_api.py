@@ -5,6 +5,7 @@ import requests
 from tests.constants.endpoints import (
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
+    CONFIRM_ENDPOINT,
     LOGIN_ENDPOINT,
     LOGOUT_ENDPOINT,
     REFRESH_ENDPOINT,
@@ -78,3 +79,8 @@ class AuthAPI(CustomRequester):
             return response.json()
         self.logger.error(f"Ошибка обновления токенов: status {response.status_code}")
         return ErrorResponse.model_validate(response.json())
+
+    def confirm_email(self, token: str, expected_status: int = 200) -> dict:
+        self.logger.info("Попытка подтверждения email")
+        response = self.get(f"{CONFIRM_ENDPOINT}/{token}", expected_status=expected_status)
+        return response.json()
