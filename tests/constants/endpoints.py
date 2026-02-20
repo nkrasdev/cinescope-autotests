@@ -8,7 +8,6 @@ BASE_PAYMENT_URL = settings.base_payment_url
 HEADERS = {"Content-Type": "application/json", "Accept": "application/json"}
 
 MOVIES_ENDPOINT = "/movies"
-CREATE_MOVIE_ENDPOINT = "/movies"
 MOVIE_BY_ID_ENDPOINT = "/movies/{movie_id}"
 REVIEWS_ENDPOINT = "/movies/{movie_id}/reviews"
 REVIEW_HIDE_ENDPOINT = "/movies/{movie_id}/reviews/hide/{user_id}"

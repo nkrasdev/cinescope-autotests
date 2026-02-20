@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     base_auth_url: str = Field(default="https://auth.dev-cinescope.coconutqa.ru")
     base_payment_url: str = Field(default="https://payment.dev-cinescope.coconutqa.ru")
 
-    admin_email: str = Field(default=None)
-    admin_password: str = Field(default=None)
+    admin_email: str | None = Field(default=None)
+    admin_password: str | None = Field(default=None)
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

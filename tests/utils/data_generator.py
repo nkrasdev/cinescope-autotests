@@ -1,6 +1,8 @@
 import logging
-import random
+import re
+import secrets
 from typing import Any
+from uuid import uuid4
 
 from faker import Faker
 
@@ -23,19 +25,19 @@ class MovieDataGenerator:
 
     @staticmethod
     def generate_random_price(min_price=100, max_price=1000):
-        return random.randint(min_price, max_price)
+        return min_price + secrets.randbelow(max_price - min_price + 1)
 
     @staticmethod
     def generate_random_location():
-        return random.choice(MovieDataGenerator.LOCATION)
+        return secrets.choice(MovieDataGenerator.LOCATION)
 
     @staticmethod
     def generate_random_genre() -> GenreId:
-        return random.choice(list(GenreId))
+        return secrets.choice(list(GenreId))
 
     @staticmethod
     def generate_random_published():
-        return random.choice([True, False])
+        return secrets.choice([True, False])
 
     @staticmethod
     def generate_valid_movie_payload(faker: Faker) -> MovieCreate:
@@ -79,11 +81,14 @@ class UserDataGenerator:
 
     @staticmethod
     def generate_random_email(faker: Faker):
-        return faker.safe_email()
+        return f"autotest-{uuid4().hex[:12]}@gmail.com"
 
     @staticmethod
     def generate_random_name(faker: Faker):
-        return faker.name()
+        raw_name = faker.name().replace("Ё", "Е").replace("ё", "е")
+        normalized_name = re.sub(r"[^А-Яа-я ]", " ", raw_name)
+        normalized_name = re.sub(r"\s+", " ", normalized_name).strip()
+        return normalized_name
 
     @staticmethod
     def generate_random_password(

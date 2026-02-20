@@ -58,26 +58,30 @@ class TestMockingExamples:
             LOGGER.info("Вызываем create_movie, который теперь является моком")
             created_movie_from_mock = admin_api_manager.movies_api.create_movie(movie_data=movie_payload)
 
-            is_movie = isinstance(created_movie_from_mock, Movie)
-            check.is_true(is_movie, f"Мок должен был вернуть объект Movie, а не {type(created_movie_from_mock)}")
-            if is_movie:
-                check.equal(created_movie_from_mock.id, fake_movie_id)
-                check.equal(created_movie_from_mock.name, movie_payload.name)
-                LOGGER.info("Мок-объект фильма успешно 'создан' и проверен")
-
-                with allure.step("4. Попытка удалить реально несуществующий фильм по ID из мока"):
-                    LOGGER.info(f"Попытка удалить реальный фильм с ID из мока: {created_movie_from_mock.id}")
-                    delete_response = admin_api_manager.movies_api.delete_movie(
-                        movie_id=created_movie_from_mock.id, expected_status=404
-                    )
-
-                with allure.step("5. Проверка, что API вернуло ошибку 404 Not Found"):
-                    is_error = isinstance(delete_response, ErrorResponse)
-                    check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(delete_response)}")
-                    if is_error:
-                        LOGGER.info(f"Получена ожидаемая ошибка 404: {delete_response.message}")
-                        check.equal(delete_response.statusCode, 404)
-                        check.equal(delete_response.message, "Фильм не найден")
-            else:
+            check.is_true(
+                isinstance(created_movie_from_mock, Movie),
+                f"Мок должен был вернуть объект Movie, а не {type(created_movie_from_mock)}",
+            )
+            if not isinstance(created_movie_from_mock, Movie):
                 LOGGER.error(f"Мок вернул некорректный тип ({type(created_movie_from_mock)}), тест прерван.")
                 pytest.fail("Мок вернул некорректный тип, дальнейшая проверка невозможна.")
+
+            check.equal(created_movie_from_mock.id, fake_movie_id)
+            check.equal(created_movie_from_mock.name, movie_payload.name)
+            LOGGER.info("Мок-объект фильма успешно 'создан' и проверен")
+
+            with allure.step("4. Попытка удалить реально несуществующий фильм по ID из мока"):
+                LOGGER.info(f"Попытка удалить реальный фильм с ID из мока: {created_movie_from_mock.id}")
+                delete_response = admin_api_manager.movies_api.delete_movie(
+                    movie_id=created_movie_from_mock.id, expected_status=404
+                )
+
+            with allure.step("5. Проверка, что API вернуло ошибку 404 Not Found"):
+                check.is_true(
+                    isinstance(delete_response, ErrorResponse),
+                    f"Ожидался объект ErrorResponse, но получен {type(delete_response)}",
+                )
+                if isinstance(delete_response, ErrorResponse):
+                    LOGGER.info(f"Получена ожидаемая ошибка 404: {delete_response.message}")
+                    check.equal(delete_response.statusCode, 404)
+                    check.equal(delete_response.message, "Фильм не найден")

@@ -5,7 +5,7 @@ from playwright.sync_api import Page, expect
 from tests.models.movie_models import Movie
 from tests.models.request_models import UserCreate
 from tests.ui.pages.login_page import LoginPage
-from tests.ui.pages.movie_details_page import MovieDetailsPage
+from tests.ui.pages.movie_details_page import MovieDetailsPage, is_payment_url_for_movie
 from tests.utils.decorators import allure_test_details
 
 
@@ -73,7 +73,7 @@ class TestMovieDetailsPage:
 
         with allure.step("Открыть страницу фильма и нажать 'Купить билет'"):
             movie_details_page.open(created_movie.id)
-            movie_details_page.click_buy_ticket_button()
+            movie_details_page.click_buy_ticket_button(created_movie.id)
 
         with allure.step("Проверить URL страницы оплаты"):
-            page.wait_for_url(f"**/payment?movieId={created_movie.id}")
+            assert is_payment_url_for_movie(page.url, created_movie.id)

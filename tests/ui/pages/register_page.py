@@ -8,11 +8,11 @@ from tests.ui.pages.base_page import BasePage
 class RegisterPage(BasePage):
     def __init__(self, page: Page):
         super().__init__(page)
-        self.full_name_input: Locator = page.locator('[data-qa-id="register_full_name_input"]')
-        self.email_input: Locator = page.locator('[data-qa-id="register_email_input"]')
-        self.password_input: Locator = page.locator('[data-qa-id="register_password_input"]')
-        self.password_repeat_input: Locator = page.locator('[data-qa-id="register_password_repeat_input"]')
-        self.submit_button: Locator = page.locator('[data-qa-id="register_submit_button"]')
+        self.full_name_input: Locator = page.locator('input[name="fullName"]')
+        self.email_input: Locator = page.locator('input[name="email"]')
+        self.password_input: Locator = page.locator('input[name="password"]')
+        self.password_repeat_input: Locator = page.locator('input[name="passwordRepeat"]')
+        self.submit_button: Locator = page.locator("form").get_by_role("button", name="Зарегистрироваться")
 
     def open(self):
         super().open("/register")

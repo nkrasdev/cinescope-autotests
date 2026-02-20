@@ -18,4 +18,3 @@ class ApiManager:
         self.users_api = UsersAPI(session, base_url=base_auth_url)
         self.movies_api = MoviesAPI(session, base_url=base_url)
         self.payment_api = PaymentAPI(session, base_url=base_payment_url)
-        self.movies_api.auth_handler = self.auth_api

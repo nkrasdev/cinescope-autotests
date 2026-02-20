@@ -7,15 +7,15 @@ from tests.ui.pages.base_page import BasePage
 class PaymentPage(BasePage):
     def __init__(self, page: Page):
         super().__init__(page)
-        self.movie_title: Locator = page.locator("div:has(h3:text('Покупка билета')) >> p.text-muted-foreground")
-        self.price: Locator = page.locator("div:has-text('Сумма к оплате') >> p.text-3xl")
-        self.amount_input: Locator = page.locator('[data-qa-id="payment_amount_input"]')
-        self.card_number_input: Locator = page.locator('[data-qa-id="payment_card_number_input"]')
-        self.card_holder_input: Locator = page.locator('[data-qa-id="payment_card_holder_input"]')
-        self.month_select: Locator = page.locator('[data-qa-id="payment_card_month_select"]')
-        self.year_select: Locator = page.locator('[data-qa-id="payment_card_year_select"]')
-        self.cvc_input: Locator = page.locator('[data-qa-id="payment_card_cvc_input"]')
-        self.submit_button: Locator = page.locator('[data-qa-id="payment_submit_button"]')
+        self.movie_title: Locator = page.locator("h3", has_text="Покупка билета").locator("xpath=following-sibling::p")
+        self.price: Locator = page.locator("div:has(label:text('Сумма к оплате')) p.text-3xl")
+        self.amount_input: Locator = page.locator("#amount")
+        self.card_number_input: Locator = page.locator("#card\\.cardNumber")
+        self.card_holder_input: Locator = page.locator("#card\\.cardholderName")
+        self.month_select: Locator = page.get_by_role("combobox", name="Месяц")
+        self.year_select: Locator = page.get_by_role("combobox", name="Год")
+        self.cvc_input: Locator = page.locator("#cvc")
+        self.submit_button: Locator = page.get_by_role("button", name="Оплатить")
 
     def open(self, movie_id: int):
         super().open(f"/payment?movieId={movie_id}")

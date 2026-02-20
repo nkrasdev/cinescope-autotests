@@ -34,7 +34,7 @@ class TestReviews:
     def test_create_review_success(self, new_registered_user, created_movie: Movie):
         LOGGER.info("Запуск теста: test_create_review_success")
         api_manager, user_payload = new_registered_user
-        api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=201)
+        api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
         payload = {"rating": 5, "text": "Очень хороший фильм"}
 
         with allure.step("Создание отзыва"):
@@ -53,7 +53,7 @@ class TestReviews:
     def test_create_review_conflict(self, new_registered_user, created_movie: Movie):
         LOGGER.info("Запуск теста: test_create_review_conflict")
         api_manager, user_payload = new_registered_user
-        api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=201)
+        api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
         payload = {"rating": 4, "text": "Хороший фильм"}
         api_manager.movies_api.create_review(created_movie.id, payload, expected_status=201)
 
@@ -72,7 +72,7 @@ class TestReviews:
     def test_edit_review_success(self, new_registered_user, created_movie: Movie):
         LOGGER.info("Запуск теста: test_edit_review_success")
         api_manager, user_payload = new_registered_user
-        api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=201)
+        api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
         api_manager.movies_api.create_review(created_movie.id, {"rating": 5, "text": "Исходный текст"})
         payload = {"rating": 3, "text": "Обновленный текст"}
 
@@ -91,7 +91,7 @@ class TestReviews:
     def test_delete_review_success(self, new_registered_user, created_movie: Movie):
         LOGGER.info("Запуск теста: test_delete_review_success")
         api_manager, user_payload = new_registered_user
-        api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=201)
+        api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
         api_manager.movies_api.create_review(created_movie.id, {"rating": 4, "text": "Будет удален"})
 
         with allure.step("Удаление отзыва"):
@@ -109,7 +109,7 @@ class TestReviews:
         LOGGER.info("Запуск теста: test_hide_show_review")
         api_manager, user_payload = new_registered_user
         login_response = api_manager.auth_api.login(
-            email=user_payload.email, password=user_payload.password, expected_status=201
+            email=user_payload.email, password=user_payload.password, expected_status=200
         )
         assert isinstance(login_response, LoginResponse)
         user_id = login_response.user.id

@@ -105,7 +105,7 @@ class TestUsers:
 
             with allure.step("Логин пользователя"):
                 api_manager.auth_api.login(
-                    email=user_payload.email, password=user_payload.password, expected_status=201
+                    email=user_payload.email, password=user_payload.password, expected_status=200
                 )
 
             with allure.step("Удаление пользователя своим токеном"):

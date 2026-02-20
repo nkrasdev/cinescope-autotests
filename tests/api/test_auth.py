@@ -4,7 +4,7 @@ import allure
 import pytest_check as check
 
 from tests.constants.log_messages import LogMessages
-from tests.models.response_models import LoginResponse
+from tests.models.response_models import ErrorResponse, LoginResponse
 from tests.models.user_models import User
 from tests.utils.data_generator import UserDataGenerator
 from tests.utils.decorators import allure_test_details
@@ -36,7 +36,7 @@ class TestAuthentication:
         with allure.step("Попытка входа в систему с учетными данными нового пользователя"):
             LOGGER.info(LogMessages.Auth.ATTEMPT_LOGIN.format(user_payload.email))
             login_response = api_manager.auth_api.login(
-                email=user_payload.email, password=user_payload.password, expected_status=201
+                email=user_payload.email, password=user_payload.password, expected_status=200
             )
 
         with allure.step("Проверка, что ответ API имеет ожидаемый тип LoginResponse"):
@@ -125,5 +125,10 @@ class TestSession:
     def test_confirm_email_invalid_token(self, api_manager):
         LOGGER.info("Запуск теста: test_confirm_email_invalid_token")
         with allure.step("Запрос подтверждения email с невалидным токеном"):
-            response = api_manager.auth_api.confirm_email(token="invalid-token", expected_status=400)
-        check.is_true(isinstance(response, dict), "Ожидался ответ в виде словаря")
+            response = api_manager.auth_api.confirm_email(
+                token="invalid-token",  # nosec B106
+                expected_status=404,
+            )
+        check.is_true(isinstance(response, ErrorResponse), f"Ожидался ответ ErrorResponse, но получен {type(response)}")
+        if isinstance(response, ErrorResponse):
+            check.equal(response.statusCode, 404)

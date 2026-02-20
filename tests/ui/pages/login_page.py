@@ -8,9 +8,9 @@ from tests.ui.pages.base_page import BasePage
 class LoginPage(BasePage):
     def __init__(self, page: Page):
         super().__init__(page)
-        self.email_input: Locator = page.locator('[data-qa-id="login_email_input"]')
-        self.password_input: Locator = page.locator('[data-qa-id="login_password_input"]')
-        self.submit_button: Locator = page.locator('[data-qa-id="login_submit_button"]')
+        self.email_input: Locator = page.locator("#email")
+        self.password_input: Locator = page.locator("#password")
+        self.submit_button: Locator = page.locator("form").get_by_role("button", name="Войти")
         self.profile_button: Locator = page.get_by_role("button", name="Профиль")
 
     def open(self):

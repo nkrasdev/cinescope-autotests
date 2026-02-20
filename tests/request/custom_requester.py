@@ -2,6 +2,7 @@ import contextlib
 import json
 import logging
 import os
+import time
 from typing import Any
 
 import allure
@@ -10,6 +11,9 @@ import requests
 
 class CustomRequester:
     base_headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    RETRYABLE_EXCEPTIONS = (requests.exceptions.Timeout, requests.exceptions.ConnectionError)
+    MAX_REQUEST_ATTEMPTS = 2
+    RETRY_DELAY_SECONDS = 1.0
 
     def __init__(self, session: requests.Session, base_url: str):
         self.session = session
@@ -43,7 +47,22 @@ class CustomRequester:
         with allure.step(step_name):
             self._attach_request_details(method, url, params, data, json_data)
 
-            response = self.session.request(method, url, **request_kwargs)
+            response = None
+            for attempt in range(1, self.MAX_REQUEST_ATTEMPTS + 1):
+                try:
+                    response = self.session.request(method, url, **request_kwargs)
+                    break
+                except self.RETRYABLE_EXCEPTIONS as exc:
+                    if attempt == self.MAX_REQUEST_ATTEMPTS:
+                        raise
+                    self.logger.warning(
+                        f"Сетевой сбой при запросе {method.upper()} {url}: {type(exc).__name__}. "
+                        f"Повтор {attempt + 1}/{self.MAX_REQUEST_ATTEMPTS} через {self.RETRY_DELAY_SECONDS:.1f}с"
+                    )
+                    time.sleep(self.RETRY_DELAY_SECONDS)
+
+            if response is None:
+                raise RuntimeError(f"Не удалось выполнить запрос {method.upper()} {url}")
             self._attach_response_details(response)
             self.log_request_and_response(response)
             self._validate_status_code(response, expected_status)
@@ -122,13 +141,13 @@ class CustomRequester:
             GREEN = "\033[32m"
             RED = "\033[31m"
             RESET = "\033[0m"
-            headers = []
+            headers_list: list[str] = []
             for header, value in request.headers.items():
                 display_value = value
                 if header.lower() == "authorization":
                     display_value = "Bearer <redacted>"
-                headers.append(f"-H '{header}: {display_value}'")
-            headers = " \\\n".join(headers)
+                headers_list.append(f"-H '{header}: {display_value}'")
+            headers_str = " \\\n".join(headers_list)
             full_test_name = f"pytest {os.environ.get('PYTEST_CURRENT_TEST', '').replace(' (call)', '')}"
 
             body = ""
@@ -138,7 +157,7 @@ class CustomRequester:
 
             self.logger.info(f"\n{'=' * 40} REQUEST {'=' * 40}")
             self.logger.info(
-                f"{GREEN}{full_test_name}{RESET}\ncurl -X {request.method} '{request.url}' \\\n{headers} \\\n{body}"
+                f"{GREEN}{full_test_name}{RESET}\ncurl -X {request.method} '{request.url}' \\\n{headers_str} \\\n{body}"
             )
 
             response_data = response.text

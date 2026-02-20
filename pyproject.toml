@@ -18,7 +18,15 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pre-commit>=4.5.1", "ruff>=0.14.11"]
+dev = [
+	"pre-commit>=4.5.1",
+	"ruff>=0.14.11",
+	"mypy>=1.15.0",
+	"pytest-cov>=6.0.0",
+	"pytest-xdist>=3.6.1",
+	"bandit[toml]>=1.7.10",
+	"types-requests>=2.32.0",
+]
 
 [tool.ruff]
 line-length = 120
@@ -39,3 +47,93 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+pretty = true
+show_error_codes = true
+show_error_context = true
+show_column_numbers = true
+explicit_package_bases = true
+namespace_packages = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+	"allure.*",
+	"faker.*",
+	"pytest_check.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+	"--strict-markers",
+	"--strict-config",
+	"--tb=short",
+	"--alluredir=allure-results",
+	"--clean-alluredir",
+]
+markers = [
+	"ui: marks tests as ui tests (deselect with '-m \"not ui\"')",
+	"smoke: marks tests as smoke tests",
+	"integration: marks tests as integration tests",
+	"slow: marks tests as slow running tests",
+]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(message)s (%(filename)s:%(lineno)s)"
+log_file = "logs/tests.log"
+log_file_level = "INFO"
+log_file_format = "%(asctime)s [%(levelname)s] %(message)s (%(filename)s:%(lineno)s)"
+
+[tool.coverage.run]
+source = ["tests"]
+omit = [
+	"*/tests/conftest.py",
+	"*/__pycache__/*",
+	"*/site-packages/*",
+	"*/tests/ui/pages/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+	"pragma: no cover",
+	"def __repr__",
+	"raise AssertionError",
+	"raise NotImplementedError",
+	"if __name__ == .__main__.:",
+	"if TYPE_CHECKING:",
+	"@abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.bandit]
+exclude_dirs = ["/tests", "/.venv"]
+skips = ["B101"]  # Skip assert_used in tests

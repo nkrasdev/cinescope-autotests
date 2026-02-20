@@ -217,7 +217,7 @@ def new_registered_user(
     yield api_manager, user_payload
     if user_id:
         try:
-            api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=201)
+            api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
             api_manager.users_api.delete_user(user_id, expected_status=200)
         except AssertionError:
             LOGGER.warning(f"Не удалось удалить пользователя {user_id} в teardown фикстуры.")

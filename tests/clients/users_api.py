@@ -8,7 +8,7 @@ from tests.models.user_models import User
 from tests.request.custom_requester import CustomRequester
 
 type UsersListApiResponse = UsersListResponse | ErrorResponse
-type UserApiResponse = User | ErrorResponse
+type UserApiResponse = User | ErrorResponse | None
 
 
 class UsersAPI(CustomRequester):
@@ -39,12 +39,12 @@ class UsersAPI(CustomRequester):
             data = response.json()
             if isinstance(data, list):
                 if not data:
-                    return UsersListResponse(users=[], count=0, page=1, page_size=0)
+                    return UsersListResponse(users=[], count=0, page=1, pageSize=0)
                 if isinstance(data[0], dict) and "users" in data[0]:
                     data = data[0]
                 else:
                     users = [User.model_validate(item) for item in data]
-                    return UsersListResponse(users=users, count=len(users), page=1, page_size=len(users))
+                    return UsersListResponse(users=users, count=len(users), page=1, pageSize=len(users))
             return UsersListResponse.model_validate(data)
         return ErrorResponse.model_validate(response.json())
 
@@ -65,5 +65,5 @@ class UsersAPI(CustomRequester):
         if response.ok:
             if response.content:
                 return User.model_validate(response.json())
-            return {}
+            return None
         return ErrorResponse.model_validate(response.json())

@@ -101,7 +101,7 @@ class TestUIAuth:
     )
     def test_registration_with_weak_password(self, page: Page, user_credentials_ui: tuple[UserCreate, str]):
         user, _ = user_credentials_ui
-        user.password = "123"
+        user.password = "123"  # nosec B105
         register_page = RegisterPage(page)
         register_page.open()
         register_page.register_user(user, user.password)

@@ -74,9 +74,10 @@ class TestMainPage:
         severity=allure.severity_level.NORMAL,
     )
     def test_all_movies_link_redirects_to_movies_page(self, page: Page):
-        with allure.step("Кликнуть по ссылке 'Все фильмы'"), page.expect_navigation(url="**/movies"):
+        with allure.step("Кликнуть по ссылке 'Все фильмы'"):
             self.main_page.click_all_movies_link()
 
         with allure.step("Проверить, что страница 'Все фильмы' загрузилась"):
-            location_filter = page.locator('[data-qa-id="movies_filter_location_select"]')
+            page.wait_for_url("**/movies")
+            location_filter = page.get_by_role("combobox").first
             expect(location_filter).to_be_visible(timeout=Timeout.FIVE_SECONDS.value)

@@ -1,9 +1,10 @@
 import functools
+from collections.abc import Callable
 
 import allure
 
 
-def allure_test_details(story: str, title: str, description: str, severity: str):
+def allure_test_details(story: str, title: str, description: str, severity: allure.severity_level) -> Callable:
     def decorator(func):
         @allure.story(story)
         @allure.title(title)

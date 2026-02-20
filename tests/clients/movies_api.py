@@ -2,9 +2,7 @@ import logging
 
 import requests
 
-from tests.clients.auth_api import AuthAPI
 from tests.constants.endpoints import (
-    CREATE_MOVIE_ENDPOINT,
     GENRE_BY_ID_ENDPOINT,
     GENRES_ENDPOINT,
     MOVIE_BY_ID_ENDPOINT,
@@ -31,7 +29,6 @@ type GenreResponseModel = GenreResponse | ErrorResponse
 class MoviesAPI(CustomRequester):
     def __init__(self, session: requests.Session, base_url: str):
         super().__init__(session, base_url)
-        self.auth_handler: AuthAPI | None = None
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def create_movie(self, movie_data: MovieCreate | dict, *, expected_status: int = 201) -> MovieResponse:
@@ -40,7 +37,7 @@ class MoviesAPI(CustomRequester):
 
         data = movie_data.model_dump(by_alias=True) if isinstance(movie_data, MovieCreate) else movie_data
 
-        response = self.post(CREATE_MOVIE_ENDPOINT, json=data, expected_status=expected_status)
+        response = self.post(MOVIES_ENDPOINT, json=data, expected_status=expected_status)
         if response.ok:
             movie = Movie.model_validate(response.json())
             self.logger.info(LogMessages.Movies.CREATE_SUCCESS.format(movie.name, movie.id))

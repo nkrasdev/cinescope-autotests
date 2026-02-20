@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import requests
 
@@ -18,6 +19,9 @@ from tests.request.custom_requester import CustomRequester
 
 type LoginApiResponse = LoginResponse | ErrorResponse
 type RegisterApiResponse = User | ErrorResponse
+type LogoutApiResponse = dict[str, Any] | ErrorResponse
+type RefreshTokenApiResponse = dict[str, Any] | ErrorResponse
+type ConfirmEmailApiResponse = dict[str, Any] | ErrorResponse
 
 
 class AuthAPI(CustomRequester):
@@ -29,7 +33,7 @@ class AuthAPI(CustomRequester):
         self,
         email: str | None = ADMIN_EMAIL,
         password: str | None = ADMIN_PASSWORD,
-        expected_status: int = 201,
+        expected_status: int = 200,
     ) -> LoginApiResponse:
         if not email or not password:
             raise ValueError("ADMIN_EMAIL и ADMIN_PASSWORD должны быть указаны в .env file")
@@ -62,25 +66,33 @@ class AuthAPI(CustomRequester):
         )
         return error_response
 
-    def logout(self, expected_status: int = 200) -> dict | ErrorResponse:
+    def logout(self, expected_status: int = 200) -> LogoutApiResponse:
         self.logger.info("Попытка выхода из системы (logout)")
-        response = self.post(LOGOUT_ENDPOINT, expected_status=expected_status)
+        response = self.get(LOGOUT_ENDPOINT, expected_status=expected_status)
         if response.ok:
             self.logger.info("Выход из системы выполнен успешно")
-            return response.json()
+            try:
+                result: dict[str, Any] = response.json()
+            except ValueError:
+                result = {"message": response.text}
+            return result
         self.logger.error(f"Ошибка выхода из системы: status {response.status_code}")
         return ErrorResponse.model_validate(response.json())
 
-    def refresh_token(self, expected_status: int = 200) -> dict | ErrorResponse:
+    def refresh_token(self, expected_status: int = 200) -> RefreshTokenApiResponse:
         self.logger.info("Попытка обновления токенов")
-        response = self.post(REFRESH_ENDPOINT, expected_status=expected_status)
+        response = self.get(REFRESH_ENDPOINT, expected_status=expected_status)
         if response.ok:
             self.logger.info("Токены успешно обновлены")
-            return response.json()
+            result: dict[str, Any] = response.json()
+            return result
         self.logger.error(f"Ошибка обновления токенов: status {response.status_code}")
         return ErrorResponse.model_validate(response.json())
 
-    def confirm_email(self, token: str, expected_status: int = 200) -> dict:
+    def confirm_email(self, token: str, expected_status: int = 200) -> ConfirmEmailApiResponse:
         self.logger.info("Попытка подтверждения email")
         response = self.get(f"{CONFIRM_ENDPOINT}/{token}", expected_status=expected_status)
-        return response.json()
+        if response.ok:
+            result: dict[str, Any] = response.json()
+            return result
+        return ErrorResponse.model_validate(response.json())

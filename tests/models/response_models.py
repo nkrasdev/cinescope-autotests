@@ -1,15 +1,19 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from tests.models.movie_models import Movie
 from tests.models.user_models import User, UserSummary
 
 
 class LoginResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     access_token: str = Field(alias="accessToken")
     user: UserSummary
 
 
 class MoviesList(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     movies: list[Movie]
     page: int
     page_size: int = Field(alias="pageSize")
@@ -33,6 +37,8 @@ class GenreResponse(BaseModel):
 
 
 class UsersListResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     users: list[User]
     count: int
     page: int
