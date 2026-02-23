@@ -32,7 +32,6 @@ class TestMockingExamples:
         severity=allure.severity_level.NORMAL,
     )
     def test_delete_movie_from_mocked_creation(self, admin_api_manager: ApiManager, movie_payload: MovieCreate, mocker):
-        LOGGER.info("Запуск теста: test_delete_movie_from_mocked_creation")
         with allure.step("1. Подготовка данных для мока на основе фикстуры 'movie_payload'"):
             fake_movie_id = NON_EXISTENT_ID
             fake_movie = Movie(

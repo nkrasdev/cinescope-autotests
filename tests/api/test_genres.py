@@ -19,7 +19,6 @@ class TestGenres:
         severity=allure.severity_level.NORMAL,
     )
     def test_get_genres_list(self, api_manager):
-        LOGGER.info("Запуск теста: test_get_genres_list")
         with allure.step("Запрос списка жанров"):
             response = api_manager.movies_api.get_genres(expected_status=200)
         check.is_true(isinstance(response, list), f"Ожидался список жанров, но получен {type(response)}")
@@ -33,7 +32,6 @@ class TestGenres:
         severity=allure.severity_level.NORMAL,
     )
     def test_get_genre_by_id(self, api_manager):
-        LOGGER.info("Запуск теста: test_get_genre_by_id")
         genres = api_manager.movies_api.get_genres(expected_status=200)
         assert isinstance(genres, list) and genres
         genre_id = genres[0].id
@@ -53,7 +51,6 @@ class TestGenres:
         severity=allure.severity_level.NORMAL,
     )
     def test_create_and_delete_genre(self, admin_api_manager, faker_instance):
-        LOGGER.info("Запуск теста: test_create_and_delete_genre")
         genre_id = None
         payload = {"name": f"Genre {faker_instance.unique.word()}"}
         try:

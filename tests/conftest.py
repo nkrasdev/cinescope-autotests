@@ -10,13 +10,21 @@ from faker import Faker
 
 from tests.clients.api_manager import ApiManager
 from tests.constants.endpoints import BASE_URL
-from tests.constants.log_messages import LogMessages
 from tests.models.movie_models import Movie
 from tests.models.request_models import MovieCreate, UserCreate
 from tests.models.user_models import User
 from tests.utils.data_generator import MovieDataGenerator, UserDataGenerator
+from tests.utils.logging_utils import LegacyMessageFilter, log_event
 
 LOGGER = logging.getLogger(__name__)
+_LEGACY_FILTER_STATE = {"installed": False}
+
+
+def _install_legacy_message_filter() -> None:
+    if _LEGACY_FILTER_STATE["installed"]:
+        return
+    logging.getLogger().addFilter(LegacyMessageFilter())
+    _LEGACY_FILTER_STATE["installed"] = True
 
 
 def _infer_allure_sub_suite(path: Path) -> str:
@@ -48,6 +56,8 @@ def allure_layer_labels(request):
 
 
 def pytest_sessionstart(session):
+    _install_legacy_message_filter()
+
     logs_dir = "logs"
     if not os.path.exists(logs_dir):
         os.makedirs(logs_dir)
@@ -56,7 +66,25 @@ def pytest_sessionstart(session):
     if not os.path.exists(screenshots_dir):
         os.makedirs(screenshots_dir)
 
-    LOGGER.info(LogMessages.General.SESSION_START)
+    log_event(LOGGER, "session", "start")
+
+
+def pytest_runtest_setup(item):
+    log_event(LOGGER, "test", "start", nodeid=item.nodeid)
+
+
+def pytest_runtest_logreport(report):
+    if report.when != "call":
+        return
+
+    log_event(
+        LOGGER,
+        "test",
+        "finish",
+        nodeid=report.nodeid,
+        outcome=report.outcome,
+        duration_sec=round(report.duration, 3),
+    )
 
 
 @pytest.fixture(scope="session")
@@ -102,31 +130,54 @@ def admin_api_manager() -> Generator[ApiManager]:
 
 @pytest.fixture
 def created_movie(admin_api_manager, movie_payload: MovieCreate):
-    LOGGER.info("Фикстура 'created_movie': создаем фильм.")
+    log_event(LOGGER, "fixture", "start", fixture="created_movie")
     movie_id = None
     try:
         created_movie_model = admin_api_manager.movies_api.create_movie(movie_data=movie_payload, expected_status=201)
         assert isinstance(created_movie_model, Movie), "Фикстура 'created_movie' ожидала успешного создания фильма"
         movie_id = created_movie_model.id
-        LOGGER.info(f"Фильм с ID {movie_id} успешно создан фикстурой.")
+        log_event(
+            LOGGER, "fixture", "resource_created", fixture="created_movie", resource="movie", resource_id=movie_id
+        )
 
         yield created_movie_model
 
     finally:
         if movie_id:
-            LOGGER.info(f"Фикстура 'created_movie': удаляем фильм с ID {movie_id}.")
+            log_event(
+                LOGGER,
+                "fixture",
+                "cleanup_start",
+                fixture="created_movie",
+                resource="movie",
+                resource_id=movie_id,
+            )
             try:
                 admin_api_manager.movies_api.delete_movie(movie_id, expected_status=200)
-                LOGGER.info(f"Фильм с ID {movie_id} успешно удален фикстурой.")
+                log_event(
+                    LOGGER,
+                    "fixture",
+                    "cleanup_success",
+                    fixture="created_movie",
+                    resource="movie",
+                    resource_id=movie_id,
+                )
             except AssertionError:
-                LOGGER.warning(
-                    f"Не удалось удалить фильм с ID {movie_id} в teardown фикстуры. Возможно, он уже был удален в тесте."
+                log_event(
+                    LOGGER,
+                    "fixture",
+                    "cleanup_skip",
+                    level=logging.WARNING,
+                    fixture="created_movie",
+                    resource="movie",
+                    resource_id=movie_id,
+                    reason="already_deleted_or_unavailable",
                 )
 
 
 @pytest.fixture
 def created_movie_unpublished(admin_api_manager, movie_payload: MovieCreate):
-    LOGGER.info("Фикстура 'created_movie_unpublished': создаем неопубликованный фильм.")
+    log_event(LOGGER, "fixture", "start", fixture="created_movie_unpublished")
     movie_id = None
     payload = movie_payload.model_copy(update={"published": False})
     try:
@@ -135,19 +186,47 @@ def created_movie_unpublished(admin_api_manager, movie_payload: MovieCreate):
             "Фикстура 'created_movie_unpublished' ожидала успешного создания фильма"
         )
         movie_id = created_movie_model.id
-        LOGGER.info(f"Неопубликованный фильм с ID {movie_id} успешно создан фикстурой.")
+        log_event(
+            LOGGER,
+            "fixture",
+            "resource_created",
+            fixture="created_movie_unpublished",
+            resource="movie",
+            resource_id=movie_id,
+        )
 
         yield created_movie_model
 
     finally:
         if movie_id:
-            LOGGER.info(f"Фикстура 'created_movie_unpublished': удаляем фильм с ID {movie_id}.")
+            log_event(
+                LOGGER,
+                "fixture",
+                "cleanup_start",
+                fixture="created_movie_unpublished",
+                resource="movie",
+                resource_id=movie_id,
+            )
             try:
                 admin_api_manager.movies_api.delete_movie(movie_id, expected_status=200)
-                LOGGER.info(f"Фильм с ID {movie_id} успешно удален фикстурой.")
+                log_event(
+                    LOGGER,
+                    "fixture",
+                    "cleanup_success",
+                    fixture="created_movie_unpublished",
+                    resource="movie",
+                    resource_id=movie_id,
+                )
             except AssertionError:
-                LOGGER.warning(
-                    f"Не удалось удалить фильм с ID {movie_id} в teardown фикстуры. Возможно, он уже был удален в тесте."
+                log_event(
+                    LOGGER,
+                    "fixture",
+                    "cleanup_skip",
+                    level=logging.WARNING,
+                    fixture="created_movie_unpublished",
+                    resource="movie",
+                    resource_id=movie_id,
+                    reason="already_deleted_or_unavailable",
                 )
 
 
@@ -161,6 +240,14 @@ def pytest_runtest_makereport(item, call):
         screenshots_dir = os.path.join("logs", "screenshots")
         screenshot_path = os.path.join(screenshots_dir, f"{item.name}_failure.png")
         page.screenshot(path=screenshot_path)
+        log_event(
+            LOGGER,
+            "artifact",
+            "saved",
+            nodeid=item.nodeid,
+            artifact_type="screenshot",
+            path=screenshot_path,
+        )
         allure.attach.file(
             screenshot_path,
             name="screenshot",
@@ -184,8 +271,15 @@ def registered_user_by_api_ui(
             try:
                 admin_api_manager.users_api.delete_user(user_id, expected_status=200)
             except AssertionError:
-                LOGGER.warning(
-                    f"Не удалось удалить пользователя {user_id} в teardown. Возможно, он уже удален в тесте."
+                log_event(
+                    LOGGER,
+                    "fixture",
+                    "cleanup_skip",
+                    level=logging.WARNING,
+                    fixture="registered_user_by_api_ui",
+                    resource="user",
+                    resource_id=user_id,
+                    reason="already_deleted_or_unavailable",
                 )
 
 
@@ -193,7 +287,7 @@ def registered_user_by_api_ui(
 def new_registered_user(
     user_credentials: tuple[UserCreate, str],
 ) -> Generator[tuple[ApiManager, UserCreate]]:
-    LOGGER.info("Фикстура 'new_registered_user': регистрируем нового пользователя.")
+    log_event(LOGGER, "fixture", "start", fixture="new_registered_user")
     user_payload, password_repeat = user_credentials
     session = requests.Session()
     api_manager = ApiManager(session, base_url=BASE_URL)
@@ -204,11 +298,27 @@ def new_registered_user(
         register_data["passwordRepeat"] = password_repeat
         registration_response = api_manager.auth_api.register(user_data=register_data, expected_status=201)
         assert isinstance(registration_response, User), "Фикстура 'new_registered_user' ожидала успешной регистрации"
-        LOGGER.info(f"Пользователь с email {user_payload.email} успешно зарегистрирован фикстурой.")
+        log_event(
+            LOGGER,
+            "fixture",
+            "resource_created",
+            fixture="new_registered_user",
+            resource="user",
+            email=user_payload.email,
+            resource_id=registration_response.id,
+        )
         user_id = registration_response.id
 
     except ValueError as e:
-        LOGGER.error(f"Регистрация пользователя {user_payload.email} провалилась: {e}")
+        log_event(
+            LOGGER,
+            "fixture",
+            "error",
+            level=logging.ERROR,
+            fixture="new_registered_user",
+            email=user_payload.email,
+            error=str(e),
+        )
         pytest.fail(f"Регистрация прервана с непредвиденной ошибкой: {e}")
 
     if "Authorization" in api_manager.session.headers:
@@ -220,6 +330,15 @@ def new_registered_user(
             api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
             api_manager.users_api.delete_user(user_id, expected_status=200)
         except AssertionError:
-            LOGGER.warning(f"Не удалось удалить пользователя {user_id} в teardown фикстуры.")
+            log_event(
+                LOGGER,
+                "fixture",
+                "cleanup_skip",
+                level=logging.WARNING,
+                fixture="new_registered_user",
+                resource="user",
+                resource_id=user_id,
+                reason="already_deleted_or_unavailable",
+            )
     session.close()
-    LOGGER.info(f"Фикстура 'new_registered_user' для пользователя {user_payload.email} завершила свою работу.")
+    log_event(LOGGER, "fixture", "finish", fixture="new_registered_user", email=user_payload.email)

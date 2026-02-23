@@ -31,7 +31,6 @@ class TestGetMovieById:
     )
     def test_get_existing_movie_by_id(self, admin_api_manager, created_movie):
         movie_id = created_movie.id
-        LOGGER.info(f"Запуск теста: test_get_existing_movie_by_id для ID {movie_id}")
         with allure.step(f"Отправка запроса на получение фильма с ID: {movie_id}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_BY_ID.format(movie_id))
             fetched_movie_response = admin_api_manager.movies_api.get_movie_by_id(movie_id, expected_status=200)
@@ -59,7 +58,6 @@ class TestGetMovieById:
     )
     def test_get_movie_not_found(self, admin_api_manager):
         movie_id = NON_EXISTENT_ID
-        LOGGER.info(f"Запуск теста: test_get_movie_not_found для несуществующего ID {movie_id}")
         with allure.step(f"Попытка получения фильма с несуществующим ID: {movie_id}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_BY_ID.format(movie_id))
             response = admin_api_manager.movies_api.get_movie_by_id(movie_id, expected_status=404)
@@ -79,7 +77,6 @@ class TestGetMovieById:
     )
     @pytest.mark.parametrize("invalid_id", [0, -1])
     def test_get_movie_not_found_invalid_id(self, admin_api_manager, invalid_id):
-        LOGGER.info(f"Запуск теста: test_get_movie_not_found_invalid_id с ID: {invalid_id}")
         with allure.step(f"Попытка получения фильма с невалидным ID: {invalid_id}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_BY_ID.format(invalid_id))
             response = admin_api_manager.movies_api.get_movie_by_id(invalid_id, expected_status=404)
@@ -98,9 +95,6 @@ class TestGetMovieById:
     )
     @pytest.mark.parametrize("invalid_id, expected_status", [(" ", 404), ("abc", 500), ("null", 500)])
     def test_get_movie_bad_request(self, admin_api_manager, invalid_id, expected_status):
-        LOGGER.info(
-            f"Запуск теста: test_get_movie_bad_request с ID: '{invalid_id}' и ожидаемым статусом {expected_status}"
-        )
         with allure.step(f"Попытка получения фильма по невалидному ID: '{invalid_id}'"):
             LOGGER.info(f"Попытка получения фильма по ID {invalid_id}")
             response = admin_api_manager.movies_api.get_movie_by_id(

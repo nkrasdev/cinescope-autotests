@@ -189,7 +189,7 @@ class TestCreateMovie:
 
 ### Development Dependencies
 - `ruff`: Линтер и форматтер
-- `mypy`: Статическая проверка типов
+- `ty`: Статическая проверка типов
 - `bandit`: Проверка безопасности
 - `pytest-cov`: Coverage
 - `pytest-xdist`: Параллельное выполнение
@@ -225,7 +225,7 @@ class Settings(BaseSettings):
 ### Jobs
 
 1. **Lint**: Проверка стиля кода (ruff)
-2. **Type Check**: Статическая проверка типов (mypy)
+2. **Type Check**: Статическая проверка типов (ty)
 3. **Security**: Проверка безопасности (bandit)
 4. **API Tests**: Запуск API тестов с coverage
 

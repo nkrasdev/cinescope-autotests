@@ -12,10 +12,10 @@ from tests.constants.endpoints import (
     REFRESH_ENDPOINT,
     REGISTER_ENDPOINT,
 )
-from tests.constants.log_messages import LogMessages
 from tests.models.response_models import ErrorResponse, LoginResponse
 from tests.models.user_models import User
 from tests.request.custom_requester import CustomRequester
+from tests.utils.logging_utils import log_event
 
 type LoginApiResponse = LoginResponse | ErrorResponse
 type RegisterApiResponse = User | ErrorResponse
@@ -38,61 +38,77 @@ class AuthAPI(CustomRequester):
         if not email or not password:
             raise ValueError("ADMIN_EMAIL и ADMIN_PASSWORD должны быть указаны в .env file")
 
-        self.logger.info(LogMessages.Auth.ATTEMPT_LOGIN.format(email))
+        log_event(self.logger, "auth", "login_attempt", email=email)
         payload = {"email": email, "password": password}
         response = self.post(LOGIN_ENDPOINT, json=payload, expected_status=expected_status)
         if response.ok:
             login_response = LoginResponse.model_validate(response.json())
             self.session.headers["Authorization"] = f"Bearer {login_response.access_token}"
-            self.logger.info(LogMessages.Auth.LOGIN_SUCCESS.format(email))
+            log_event(self.logger, "auth", "login_success", email=email)
             return login_response
 
         error_response = ErrorResponse.model_validate(response.json())
-        self.logger.error(f"Ошибка логина для {email}: {error_response.message} (status: {error_response.statusCode})")
+        log_event(
+            self.logger,
+            "auth",
+            "login_failed",
+            level=logging.ERROR,
+            email=email,
+            status_code=error_response.statusCode,
+            error=error_response.message,
+        )
         return error_response
 
     def register(self, user_data: dict, expected_status: int = 201) -> User | ErrorResponse:
         email = user_data.get("email", "N/A")
-        self.logger.info(f"Попытка регистрации пользователя {email}")
+        log_event(self.logger, "auth", "register_attempt", email=email)
         response = self.post(REGISTER_ENDPOINT, json=user_data, expected_status=expected_status)
         if response.ok:
             user = User.model_validate(response.json())
-            self.logger.info(f"Пользователь {user.email} успешно зарегистрирован.")
+            log_event(self.logger, "auth", "register_success", email=user.email, user_id=user.id)
             return user
 
         error_response = ErrorResponse.model_validate(response.json())
-        self.logger.error(
-            f"Ошибка регистрации для {email}: {error_response.message} (status: {error_response.statusCode})"
+        log_event(
+            self.logger,
+            "auth",
+            "register_failed",
+            level=logging.ERROR,
+            email=email,
+            status_code=error_response.statusCode,
+            error=error_response.message,
         )
         return error_response
 
     def logout(self, expected_status: int = 200) -> LogoutApiResponse:
-        self.logger.info("Попытка выхода из системы (logout)")
+        log_event(self.logger, "auth", "logout_attempt")
         response = self.get(LOGOUT_ENDPOINT, expected_status=expected_status)
         if response.ok:
-            self.logger.info("Выход из системы выполнен успешно")
+            log_event(self.logger, "auth", "logout_success")
             try:
                 result: dict[str, Any] = response.json()
             except ValueError:
                 result = {"message": response.text}
             return result
-        self.logger.error(f"Ошибка выхода из системы: status {response.status_code}")
+        log_event(self.logger, "auth", "logout_failed", level=logging.ERROR, status_code=response.status_code)
         return ErrorResponse.model_validate(response.json())
 
     def refresh_token(self, expected_status: int = 200) -> RefreshTokenApiResponse:
-        self.logger.info("Попытка обновления токенов")
+        log_event(self.logger, "auth", "refresh_attempt")
         response = self.get(REFRESH_ENDPOINT, expected_status=expected_status)
         if response.ok:
-            self.logger.info("Токены успешно обновлены")
+            log_event(self.logger, "auth", "refresh_success")
             result: dict[str, Any] = response.json()
             return result
-        self.logger.error(f"Ошибка обновления токенов: status {response.status_code}")
+        log_event(self.logger, "auth", "refresh_failed", level=logging.ERROR, status_code=response.status_code)
         return ErrorResponse.model_validate(response.json())
 
     def confirm_email(self, token: str, expected_status: int = 200) -> ConfirmEmailApiResponse:
-        self.logger.info("Попытка подтверждения email")
+        log_event(self.logger, "auth", "confirm_email_attempt", token=token)
         response = self.get(f"{CONFIRM_ENDPOINT}/{token}", expected_status=expected_status)
         if response.ok:
+            log_event(self.logger, "auth", "confirm_email_success")
             result: dict[str, Any] = response.json()
             return result
+        log_event(self.logger, "auth", "confirm_email_failed", level=logging.WARNING, status_code=response.status_code)
         return ErrorResponse.model_validate(response.json())

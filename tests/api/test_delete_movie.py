@@ -30,7 +30,6 @@ class TestDeleteMovie:
         severity=allure.severity_level.CRITICAL,
     )
     def test_delete_movie_success(self, admin_api_manager, movie_payload):
-        LOGGER.info("Запуск теста: test_delete_movie_success")
         with allure.step("Подготовка: создание нового фильма для последующего удаления"):
             LOGGER.info(f"Создание тестового фильма с названием: '{movie_payload.name}'")
             created_movie_response = admin_api_manager.movies_api.create_movie(movie_payload, expected_status=201)
@@ -67,7 +66,6 @@ class TestDeleteMovie:
         severity=allure.severity_level.NORMAL,
     )
     def test_delete_movie_unauthorized(self, api_manager, created_movie):
-        LOGGER.info("Запуск теста: test_delete_movie_unauthorized")
         movie_id = created_movie.id
         with allure.step(f"Попытка удаления фильма с ID {movie_id} без токена авторизации"):
             LOGGER.info(f"Попытка удаления фильма с ID {movie_id} без авторизации")
@@ -90,7 +88,6 @@ class TestDeleteMovie:
     @pytest.mark.parametrize("non_existent_id", [0, -1, NON_EXISTENT_ID])
     def test_delete_non_existent_movie(self, admin_api_manager, non_existent_id):
         allure.dynamic.title(f"Тест удаления фильма с несуществующим ID: {non_existent_id}")
-        LOGGER.info(f"Запуск теста: test_delete_non_existent_movie с ID: {non_existent_id}")
         with allure.step(f"Попытка удаления фильма с несуществующим ID: {non_existent_id}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_DELETE.format(non_existent_id))
             response = admin_api_manager.movies_api.delete_movie(movie_id=non_existent_id, expected_status=404)
@@ -109,7 +106,6 @@ class TestDeleteMovie:
     )
     def test_delete_movie_with_bad_request(self, admin_api_manager):
         bad_id = "abc"
-        LOGGER.info(f"Запуск теста: test_delete_movie_with_bad_request с ID: '{bad_id}'")
         with allure.step(f"Попытка удаления фильма с нецелочисленным ID ('{bad_id}')"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_DELETE.format(bad_id))
             response = admin_api_manager.movies_api.delete_movie(movie_id=bad_id, expected_status=404)

@@ -28,7 +28,6 @@ class TestAuthentication:
         severity=allure.severity_level.CRITICAL,
     )
     def test_registered_user_can_login(self, new_registered_user):
-        LOGGER.info("Запуск теста: test_registered_user_can_login")
         with allure.step("Получение данных нового зарегистрированного пользователя (через фикстуру)"):
             api_manager, user_payload = new_registered_user
             LOGGER.info(f"Тестовые данные для пользователя '{user_payload.email}' подготовлены фикстурой.")
@@ -70,7 +69,6 @@ class TestRegistration:
         severity=allure.severity_level.CRITICAL,
     )
     def test_register_user_success(self, api_manager, admin_api_manager, faker_instance):
-        LOGGER.info("Запуск теста: test_register_user_success")
         user_payload, password_repeat = UserDataGenerator.generate_user_payload(faker_instance)
         payload = user_payload.model_dump(by_alias=True)
         payload["passwordRepeat"] = password_repeat
@@ -99,7 +97,6 @@ class TestSession:
         severity=allure.severity_level.NORMAL,
     )
     def test_refresh_tokens(self, admin_api_manager):
-        LOGGER.info("Запуск теста: test_refresh_tokens")
         with allure.step("Запрос обновления токенов"):
             response = admin_api_manager.auth_api.refresh_token(expected_status=200)
         check.is_true(isinstance(response, dict), "Ожидался ответ в виде словаря")
@@ -111,7 +108,6 @@ class TestSession:
         severity=allure.severity_level.NORMAL,
     )
     def test_logout(self, admin_api_manager):
-        LOGGER.info("Запуск теста: test_logout")
         with allure.step("Запрос logout"):
             response = admin_api_manager.auth_api.logout(expected_status=200)
         check.is_true(isinstance(response, dict), "Ожидался ответ в виде словаря")
@@ -123,7 +119,6 @@ class TestSession:
         severity=allure.severity_level.MINOR,
     )
     def test_confirm_email_invalid_token(self, api_manager):
-        LOGGER.info("Запуск теста: test_confirm_email_invalid_token")
         with allure.step("Запрос подтверждения email с невалидным токеном"):
             response = api_manager.auth_api.confirm_email(
                 token="invalid-token",  # nosec B106

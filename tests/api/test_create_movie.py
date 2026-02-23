@@ -30,7 +30,6 @@ class TestCreateMovie:
         severity=allure.severity_level.CRITICAL,
     )
     def test_create_movie_success(self, admin_api_manager, movie_payload):
-        LOGGER.info("Запуск теста: test_create_movie_success")
         movie_id = None
         try:
             with allure.step("Отправка запроса на создание нового фильма"):
@@ -66,7 +65,6 @@ class TestCreateMovie:
         severity=allure.severity_level.NORMAL,
     )
     def test_create_movie_unauthorized(self, api_manager, movie_payload):
-        LOGGER.info("Запуск теста: test_create_movie_unauthorized")
         with allure.step("Попытка создания фильма без токена авторизации"):
             LOGGER.info(f"Попытка создания фильма '{movie_payload.name}' без авторизации")
             response = api_manager.movies_api.create_movie(
@@ -88,7 +86,6 @@ class TestCreateMovie:
         severity=allure.severity_level.NORMAL,
     )
     def test_create_movie_conflict_duplicate_name(self, admin_api_manager, created_movie, movie_payload):
-        LOGGER.info("Запуск теста: test_create_movie_conflict_duplicate_name")
         with allure.step("Подготовка данных: использование названия уже существующего фильма"):
             movie_payload.name = created_movie.name
         with allure.step("Попытка создания фильма с дублирующимся названием"):
@@ -109,7 +106,6 @@ class TestCreateMovie:
         severity=allure.severity_level.NORMAL,
     )
     def test_create_movie_bad_request_empty_body(self, admin_api_manager):
-        LOGGER.info("Запуск теста: test_create_movie_bad_request_empty_body")
         with allure.step("Отправка запроса на создание фильма с пустым телом"):
             LOGGER.info("Попытка создания фильма с пустым телом запроса")
             response = admin_api_manager.movies_api.create_movie(movie_data={}, expected_status=400)
@@ -133,7 +129,6 @@ class TestCreateMovie:
     @pytest.mark.parametrize("missing_field", ["name", "description", "price", "location", "genreId"])
     def test_create_movie_bad_request_missing_field(self, admin_api_manager, faker_instance, missing_field):
         allure.dynamic.title(f"Тест создания фильма без обязательного поля: '{missing_field}'")
-        LOGGER.info(f"Запуск теста: отсутствует поле '{missing_field}'")
         with allure.step(f"Подготовка данных без поля '{missing_field}'"):
             invalid_payload_dict = MovieDataGenerator.generate_movie_payload_missing_field(
                 faker_instance, missing_field
@@ -164,7 +159,6 @@ class TestCreateMovie:
         self, admin_api_manager, faker_instance, field_to_break, invalid_value
     ):
         allure.dynamic.title(f"Тест создания фильма с невалидным полем: '{field_to_break}'")
-        LOGGER.info(f"Запуск теста: невалидный тип для поля '{field_to_break}'")
         with allure.step(
             f"Подготовка невалидных данных: в поле '{field_to_break}' установлено значение '{invalid_value}'"
         ):

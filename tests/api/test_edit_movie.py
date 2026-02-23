@@ -32,7 +32,6 @@ class TestEditMovie:
         severity=allure.severity_level.CRITICAL,
     )
     def test_edit_movie_name_success(self, admin_api_manager, created_movie, faker_instance):
-        LOGGER.info("Запуск теста: test_edit_movie_name_success")
         movie_id = created_movie.id
         with allure.step("Подготовка: генерация нового названия для фильма"):
             new_name = "Обновленное название фильма " + MovieDataGenerator.generate_random_title(faker_instance)
@@ -74,7 +73,6 @@ class TestEditMovie:
         severity=allure.severity_level.NORMAL,
     )
     def test_edit_movie_unauthorized(self, api_manager, created_movie):
-        LOGGER.info("Запуск теста: test_edit_movie_unauthorized")
         movie_id = created_movie.id
         with allure.step(f"Попытка редактирования фильма с ID {movie_id} без токена авторизации"):
             edit_payload = {"name": "Новое имя"}
@@ -98,7 +96,6 @@ class TestEditMovie:
     )
     def test_edit_non_existent_movie(self, admin_api_manager):
         movie_id = NON_EXISTENT_ID
-        LOGGER.info(f"Запуск теста: test_edit_non_existent_movie с ID: {movie_id}")
         with allure.step(f"Попытка редактирования фильма с несуществующим ID: {movie_id}"):
             edit_payload = {"name": "Неважно"}
             LOGGER.info(LogMessages.Movies.ATTEMPT_EDIT.format(movie_id))
@@ -125,7 +122,6 @@ class TestEditMovie:
         field = list(invalid_data.keys())[0]
         allure.dynamic.title(f"Тест редактирования с невалидным полем: '{field}'")
         movie_id = created_movie.id
-        LOGGER.info(f"Запуск теста: test_edit_movie_with_invalid_data для ID {movie_id} с данными {invalid_data}")
         with allure.step(f"Попытка редактирования фильма с невалидными данными: {invalid_data}"):
             LOGGER.info(f"Попытка редактирования фильма ID {movie_id} с невалидными данными: {invalid_data}")
             response = admin_api_manager.movies_api.edit_movie(

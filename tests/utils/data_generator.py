@@ -8,6 +8,7 @@ from faker import Faker
 
 from tests.models.movie_models import GenreId, Location
 from tests.models.request_models import MovieCreate, UserCreate
+from tests.utils.logging_utils import log_event
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,15 @@ class MovieDataGenerator:
             genreId=MovieDataGenerator.generate_random_genre(),
             published=MovieDataGenerator.generate_random_published(),
         )
-        logger.debug(f"Сгенерированы данные для создания фильма: {payload.model_dump_json(indent=2)}")
+        log_event(
+            logger,
+            "generator",
+            "movie_payload_created",
+            level=logging.DEBUG,
+            name=payload.name,
+            location=payload.location.value,
+            genre_id=payload.genre_id,
+        )
         return payload
 
     @staticmethod
@@ -76,7 +85,7 @@ class UserDataGenerator:
             full_name=UserDataGenerator.generate_random_name(faker),
             password=password,
         )
-        logger.debug(f"Сгенерированы данные для создания пользователя: Email - {user_data.email}")
+        log_event(logger, "generator", "user_payload_created", level=logging.DEBUG, email=user_data.email)
         return user_data, password
 
     @staticmethod

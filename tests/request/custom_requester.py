@@ -8,6 +8,8 @@ from typing import Any
 import allure
 import requests
 
+from tests.utils.logging_utils import log_event
+
 
 class CustomRequester:
     base_headers = {"Content-Type": "application/json", "Accept": "application/json"}
@@ -55,9 +57,17 @@ class CustomRequester:
                 except self.RETRYABLE_EXCEPTIONS as exc:
                     if attempt == self.MAX_REQUEST_ATTEMPTS:
                         raise
-                    self.logger.warning(
-                        f"Сетевой сбой при запросе {method.upper()} {url}: {type(exc).__name__}. "
-                        f"Повтор {attempt + 1}/{self.MAX_REQUEST_ATTEMPTS} через {self.RETRY_DELAY_SECONDS:.1f}с"
+                    log_event(
+                        self.logger,
+                        "http",
+                        "retry",
+                        level=logging.WARNING,
+                        method=method.upper(),
+                        url=url,
+                        error_type=type(exc).__name__,
+                        attempt=attempt + 1,
+                        max_attempts=self.MAX_REQUEST_ATTEMPTS,
+                        delay_sec=self.RETRY_DELAY_SECONDS,
                     )
                     time.sleep(self.RETRY_DELAY_SECONDS)
 
@@ -135,12 +145,15 @@ class CustomRequester:
 
         allure.attach(body=response_body, name="Response Body", attachment_type=attachment_type)
 
+    @staticmethod
+    def _truncate_payload(payload: str, max_length: int = 4000) -> str:
+        if len(payload) <= max_length:
+            return payload
+        return f"{payload[:max_length]}... <truncated {len(payload) - max_length} chars>"
+
     def log_request_and_response(self, response):
         try:
             request = response.request
-            GREEN = "\033[32m"
-            RED = "\033[31m"
-            RESET = "\033[0m"
             headers_list: list[str] = []
             for header, value in request.headers.items():
                 display_value = value
@@ -155,22 +168,44 @@ class CustomRequester:
                 body = request.body.decode("utf-8") if isinstance(request.body, bytes) else str(request.body)
                 body = f"-d '{body}' \n" if body != "{}" and body else ""
 
-            self.logger.info(f"\n{'=' * 40} REQUEST {'=' * 40}")
+            log_event(
+                self.logger,
+                "http",
+                "request",
+                method=request.method,
+                url=request.url,
+                test=full_test_name,
+            )
             self.logger.info(
-                f"{GREEN}{full_test_name}{RESET}\ncurl -X {request.method} '{request.url}' \\\n{headers_str} \\\n{body}"
+                "curl -X %s '%s' \\\n%s \\\n%s",
+                request.method,
+                request.url,
+                headers_str,
+                body,
             )
 
             response_data = response.text
             with contextlib.suppress(json.JSONDecodeError):
                 response_data = json.dumps(json.loads(response.text), indent=4, ensure_ascii=False)
+            response_data = self._truncate_payload(response_data)
 
-            self.logger.info(f"\n{'=' * 40} RESPONSE {'=' * 40}")
-            if not response.ok:
-                self.logger.info(
-                    f"\tSTATUS_CODE: {RED}{response.status_code}{RESET}\n\tDATA: {RED}{response_data}{RESET}"
-                )
-            else:
-                self.logger.info(f"\tSTATUS_CODE: {GREEN}{response.status_code}{RESET}\n\tDATA:\n{response_data}")
-            self.logger.info(f"{'=' * 80}\n")
+            log_event(
+                self.logger,
+                "http",
+                "response",
+                level=logging.WARNING if not response.ok else logging.INFO,
+                method=request.method,
+                url=request.url,
+                status_code=response.status_code,
+                ok=response.ok,
+            )
+            self.logger.info("response_body=%s", response_data)
         except Exception as e:
-            self.logger.error(f"\nLogging failed: {type(e)} - {e}")
+            log_event(
+                self.logger,
+                "http",
+                "logging_failed",
+                level=logging.ERROR,
+                error_type=type(e).__name__,
+                error=str(e),
+            )

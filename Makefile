@@ -25,8 +25,8 @@ format: ## Format code with ruff
 format-check: ## Check code formatting without changes
 	uv run ruff format --check .
 
-type-check: ## Run type checking with mypy
-	uv run mypy tests --exclude tests/ui/
+type-check: ## Run type checking with ty
+	uv run ty check tests --exclude tests/ui/ --force-exclude
 
 security: ## Run security checks with bandit
 	uv run bandit -c pyproject.toml -r tests
@@ -58,7 +58,6 @@ check-all: lint format-check type-check security ## Run all checks (lint, format
 
 clean: ## Clean up generated files
 	rm -rf .pytest_cache
-	rm -rf .mypy_cache
 	rm -rf .ruff_cache
 	rm -rf htmlcov
 	rm -rf allure-results

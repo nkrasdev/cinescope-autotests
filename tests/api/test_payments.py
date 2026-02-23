@@ -37,7 +37,6 @@ class TestPayments:
         severity=allure.severity_level.CRITICAL,
     )
     def test_create_payment_success(self, new_registered_user):
-        LOGGER.info("Запуск теста: test_create_payment_success")
         api_manager, user_payload = new_registered_user
         with allure.step("Логин пользователя"):
             api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
@@ -57,7 +56,6 @@ class TestPayments:
         severity=allure.severity_level.NORMAL,
     )
     def test_create_payment_unauthorized(self, api_manager):
-        LOGGER.info("Запуск теста: test_create_payment_unauthorized")
         movie_id = _get_movie_id(api_manager)
         payload = {"movieId": movie_id, "amount": PAYMENT_TICKETS_AMOUNT, "card": PAYMENT_CARD}
         with allure.step("Создание платежа без авторизации"):
@@ -73,7 +71,6 @@ class TestPayments:
         severity=allure.severity_level.NORMAL,
     )
     def test_get_current_user_payments(self, new_registered_user):
-        LOGGER.info("Запуск теста: test_get_current_user_payments")
         api_manager, user_payload = new_registered_user
         with allure.step("Логин пользователя"):
             api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
@@ -94,7 +91,6 @@ class TestPayments:
         severity=allure.severity_level.NORMAL,
     )
     def test_admin_get_user_payments(self, new_registered_user, admin_api_manager):
-        LOGGER.info("Запуск теста: test_admin_get_user_payments")
         api_manager, user_payload = new_registered_user
         with allure.step("Логин пользователя"):
             login_response = api_manager.auth_api.login(
@@ -118,7 +114,6 @@ class TestPayments:
         severity=allure.severity_level.NORMAL,
     )
     def test_admin_get_all_payments(self, admin_api_manager):
-        LOGGER.info("Запуск теста: test_admin_get_all_payments")
         with allure.step("Запрос списка всех платежей"):
             response = admin_api_manager.payment_api.get_all_payments(expected_status=200)
         check.is_true(

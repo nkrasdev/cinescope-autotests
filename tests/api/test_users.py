@@ -21,7 +21,6 @@ class TestUsers:
         severity=allure.severity_level.CRITICAL,
     )
     def test_admin_create_user(self, admin_api_manager, faker_instance):
-        LOGGER.info("Запуск теста: test_admin_create_user")
         user_payload, password = UserDataGenerator.generate_user_payload(faker_instance)
         payload = user_payload.model_dump(by_alias=True)
         payload.update({"password": password, "verified": True, "banned": False})
@@ -48,7 +47,6 @@ class TestUsers:
         severity=allure.severity_level.NORMAL,
     )
     def test_get_user_by_email(self, admin_api_manager, faker_instance):
-        LOGGER.info("Запуск теста: test_get_user_by_email")
         user_payload, password = UserDataGenerator.generate_user_payload(faker_instance)
         payload = user_payload.model_dump(by_alias=True)
         payload.update({"password": password, "verified": True, "banned": False})
@@ -76,7 +74,6 @@ class TestUsers:
         severity=allure.severity_level.NORMAL,
     )
     def test_get_users_list(self, admin_api_manager):
-        LOGGER.info("Запуск теста: test_get_users_list")
         with allure.step("Запрос списка пользователей"):
             response = admin_api_manager.users_api.get_users(expected_status=200)
         is_list = isinstance(response, UsersListResponse)
@@ -92,7 +89,6 @@ class TestUsers:
         severity=allure.severity_level.NORMAL,
     )
     def test_user_can_delete_self(self, api_manager, admin_api_manager, faker_instance):
-        LOGGER.info("Запуск теста: test_user_can_delete_self")
         user_payload, password_repeat = UserDataGenerator.generate_user_payload(faker_instance)
         payload = user_payload.model_dump(by_alias=True)
         payload["passwordRepeat"] = password_repeat
@@ -126,7 +122,6 @@ class TestUsers:
         severity=allure.severity_level.NORMAL,
     )
     def test_admin_edit_user(self, admin_api_manager, faker_instance):
-        LOGGER.info("Запуск теста: test_admin_edit_user")
         user_payload, password = UserDataGenerator.generate_user_payload(faker_instance)
         payload = user_payload.model_dump(by_alias=True)
         payload.update({"password": password, "verified": True, "banned": False})

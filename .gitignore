@@ -24,9 +24,6 @@ __pycache__/
 .Python
 
 # Type checking
-.mypy_cache/
-.dmypy.json
-dmypy.json
 .pyre/
 .pytype/
 

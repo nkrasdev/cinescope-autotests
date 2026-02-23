@@ -20,7 +20,6 @@ class TestReviews:
         severity=allure.severity_level.NORMAL,
     )
     def test_get_reviews(self, api_manager, created_movie: Movie):
-        LOGGER.info("Запуск теста: test_get_reviews")
         with allure.step("Запрос списка отзывов"):
             response = api_manager.movies_api.get_reviews(created_movie.id, expected_status=200)
         check.is_true(isinstance(response, list), f"Ожидался список отзывов, но получен {type(response)}")
@@ -32,7 +31,6 @@ class TestReviews:
         severity=allure.severity_level.CRITICAL,
     )
     def test_create_review_success(self, new_registered_user, created_movie: Movie):
-        LOGGER.info("Запуск теста: test_create_review_success")
         api_manager, user_payload = new_registered_user
         api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
         payload = {"rating": 5, "text": "Очень хороший фильм"}
@@ -51,7 +49,6 @@ class TestReviews:
         severity=allure.severity_level.NORMAL,
     )
     def test_create_review_conflict(self, new_registered_user, created_movie: Movie):
-        LOGGER.info("Запуск теста: test_create_review_conflict")
         api_manager, user_payload = new_registered_user
         api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
         payload = {"rating": 4, "text": "Хороший фильм"}
@@ -70,7 +67,6 @@ class TestReviews:
         severity=allure.severity_level.NORMAL,
     )
     def test_edit_review_success(self, new_registered_user, created_movie: Movie):
-        LOGGER.info("Запуск теста: test_edit_review_success")
         api_manager, user_payload = new_registered_user
         api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
         api_manager.movies_api.create_review(created_movie.id, {"rating": 5, "text": "Исходный текст"})
@@ -89,7 +85,6 @@ class TestReviews:
         severity=allure.severity_level.NORMAL,
     )
     def test_delete_review_success(self, new_registered_user, created_movie: Movie):
-        LOGGER.info("Запуск теста: test_delete_review_success")
         api_manager, user_payload = new_registered_user
         api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
         api_manager.movies_api.create_review(created_movie.id, {"rating": 4, "text": "Будет удален"})
@@ -106,7 +101,6 @@ class TestReviews:
         severity=allure.severity_level.NORMAL,
     )
     def test_hide_show_review(self, new_registered_user, admin_api_manager, created_movie: Movie):
-        LOGGER.info("Запуск теста: test_hide_show_review")
         api_manager, user_payload = new_registered_user
         login_response = api_manager.auth_api.login(
             email=user_payload.email, password=user_payload.password, expected_status=200

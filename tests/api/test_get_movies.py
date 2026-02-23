@@ -22,7 +22,6 @@ class TestGetMovies:
         severity=allure.severity_level.NORMAL,
     )
     def test_get_movies_default(self, api_manager):
-        LOGGER.info("Запуск теста: test_get_movies_default")
         with allure.step("Отправка GET-запроса без параметров"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST.format("default"))
             response = api_manager.movies_api.get_movies()
@@ -47,7 +46,6 @@ class TestGetMovies:
     def test_get_movies_with_pagination(self, api_manager):
         page_size = 5
         params = {"page": 2, "pageSize": page_size}
-        LOGGER.info(f"Запуск теста: test_get_movies_with_pagination с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с кастомной пагинацией: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST.format(params))
             response = api_manager.movies_api.get_movies(params=params)
@@ -69,7 +67,6 @@ class TestGetMovies:
     )
     def test_get_movies_price_filter(self, api_manager):
         params = {"minPrice": 100, "maxPrice": 300}
-        LOGGER.info(f"Запуск теста: test_get_movies_price_filter с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с фильтром по цене: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST.format(params))
             response = api_manager.movies_api.get_movies(params=params)
@@ -90,7 +87,6 @@ class TestGetMovies:
         severity=allure.severity_level.NORMAL,
     )
     def test_get_movies_location_filter(self, admin_api_manager, movie_payload):
-        LOGGER.info("Запуск теста: test_get_movies_location_filter")
         movie_id = None
         try:
             with allure.step("Подготовка: создание фильма с локацией 'MSK'"):
@@ -126,7 +122,6 @@ class TestGetMovies:
     )
     def test_get_movies_genre_filter(self, api_manager):
         params = {"genreId": 1}
-        LOGGER.info(f"Запуск теста: test_get_movies_genre_filter с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с фильтром по жанру: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST.format(params))
             response = api_manager.movies_api.get_movies(params=params)
@@ -145,7 +140,6 @@ class TestGetMovies:
     )
     def test_get_movies_sort_created_at(self, api_manager):
         params = {"createdAt": "desc"}
-        LOGGER.info(f"Запуск теста: test_get_movies_sort_created_at с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с сортировкой по дате: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST.format(params))
             response = api_manager.movies_api.get_movies(params=params)
@@ -163,7 +157,6 @@ class TestGetMovies:
         severity=allure.severity_level.NORMAL,
     )
     def test_get_movies_published_default(self, api_manager):
-        LOGGER.info("Запуск теста: test_get_movies_published_default")
         with allure.step("Отправка GET-запроса без параметра 'published'"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST.format("published: default"))
             response = api_manager.movies_api.get_movies()
@@ -182,7 +175,6 @@ class TestGetMovies:
     )
     @pytest.mark.xfail(reason="API bug: returns published movies when unpublished are requested")
     def test_get_movies_unpublished(self, admin_api_manager):
-        LOGGER.info("Запуск теста: test_get_movies_unpublished с параметрами {'published': False}")
         with allure.step("Запрос списка неопубликованных фильмов"):
             response = admin_api_manager.movies_api.get_movies(params={"published": False})
         is_list = isinstance(response, MoviesList)
@@ -201,7 +193,6 @@ class TestGetMovies:
     @pytest.mark.parametrize("params", [{"pageSize": "abc"}, {"pageSize": 0}, {"pageSize": 21}])
     def test_invalid_page_size(self, api_manager, params):
         allure.dynamic.title(f"Тест с невалидным pageSize: {params['pageSize']}")
-        LOGGER.info(f"Запуск теста: test_invalid_page_size с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с невалидным размером страницы: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST_INVALID.format(params))
             response = api_manager.movies_api.get_movies_with_invalid_params(params=params, expected_status=400)
@@ -220,7 +211,6 @@ class TestGetMovies:
     )
     def test_invalid_location(self, api_manager):
         params = {"locations": ["NY"]}
-        LOGGER.info(f"Запуск теста: test_invalid_location с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с невалидной локацией: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST_INVALID.format(params))
             response = api_manager.movies_api.get_movies_with_invalid_params(params=params, expected_status=400)
@@ -239,7 +229,6 @@ class TestGetMovies:
     )
     def test_invalid_created_at_enum(self, api_manager):
         params = {"createdAt": "random"}
-        LOGGER.info(f"Запуск теста: test_invalid_created_at_enum с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с невалидным значением сортировки: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST_INVALID.format(params))
             response = api_manager.movies_api.get_movies_with_invalid_params(params=params, expected_status=400)
@@ -258,7 +247,6 @@ class TestGetMovies:
     )
     def test_invalid_genre_id(self, api_manager):
         params = {"genreId": 0}
-        LOGGER.info(f"Запуск теста: test_invalid_genre_id с параметрами {params}")
         with allure.step(f"Отправка GET-запроса с невалидным ID жанра: {params}"):
             LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST_INVALID.format(params))
             response = api_manager.movies_api.get_movies_with_invalid_params(params=params, expected_status=400)
