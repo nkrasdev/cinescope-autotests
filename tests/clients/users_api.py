@@ -1,7 +1,5 @@
 import logging
 
-import requests
-
 from tests.constants.endpoints import USER_BY_ID_ENDPOINT, USER_BY_ID_OR_EMAIL_ENDPOINT, USERS_ENDPOINT
 from tests.models.response_models import ErrorResponse, UsersListResponse
 from tests.models.user_models import User
@@ -13,10 +11,6 @@ type UserApiResponse = User | ErrorResponse | None
 
 
 class UsersAPI(CustomRequester):
-    def __init__(self, session: requests.Session, base_url: str) -> None:
-        super().__init__(session, base_url=base_url)
-        self.logger = logging.getLogger(self.__class__.__name__)
-
     def create_user(self, user_data: dict, expected_status: int = 201) -> UserApiResponse:
         log_event(self.logger, "user", "create_attempt", email=user_data.get("email"))
         response = self.post(USERS_ENDPOINT, json=user_data, expected_status=expected_status)
@@ -24,16 +18,7 @@ class UsersAPI(CustomRequester):
             user = User.model_validate(response.json())
             log_event(self.logger, "user", "create_success", user_id=user.id, email=user.email)
             return user
-        error = ErrorResponse.model_validate(response.json())
-        log_event(
-            self.logger,
-            "user",
-            "create_failed",
-            level=logging.ERROR,
-            status_code=error.statusCode,
-            error=error.message,
-        )
-        return error
+        return self.parse_and_log_error(response, domain="user", action="create_failed", level=logging.ERROR)
 
     def get_user(self, id_or_email: str, expected_status: int = 200) -> UserApiResponse:
         log_event(self.logger, "user", "get_attempt", id_or_email=id_or_email)
@@ -44,17 +29,13 @@ class UsersAPI(CustomRequester):
             user = User.model_validate(response.json())
             log_event(self.logger, "user", "get_success", user_id=user.id, email=user.email)
             return user
-        error = ErrorResponse.model_validate(response.json())
-        log_event(
-            self.logger,
-            "user",
-            "get_failed",
+        return self.parse_and_log_error(
+            response,
+            domain="user",
+            action="get_failed",
             level=logging.WARNING,
             id_or_email=id_or_email,
-            status_code=error.statusCode,
-            error=error.message,
         )
-        return error
 
     def get_users(self, params: dict | None = None, expected_status: int = 200) -> UsersListApiResponse:
         log_event(self.logger, "user", "list_attempt", params=params or "default")
@@ -74,16 +55,7 @@ class UsersAPI(CustomRequester):
             users_list = UsersListResponse.model_validate(data)
             log_event(self.logger, "user", "list_success", count=users_list.count)
             return users_list
-        error = ErrorResponse.model_validate(response.json())
-        log_event(
-            self.logger,
-            "user",
-            "list_failed",
-            level=logging.ERROR,
-            status_code=error.statusCode,
-            error=error.message,
-        )
-        return error
+        return self.parse_and_log_error(response, domain="user", action="list_failed", level=logging.ERROR)
 
     def edit_user(self, user_id: str, user_data: dict, expected_status: int = 200) -> UserApiResponse:
         log_event(self.logger, "user", "edit_attempt", user_id=user_id)
@@ -96,17 +68,13 @@ class UsersAPI(CustomRequester):
             user = User.model_validate(data)
             log_event(self.logger, "user", "edit_success", user_id=user.id, email=user.email)
             return user
-        error = ErrorResponse.model_validate(response.json())
-        log_event(
-            self.logger,
-            "user",
-            "edit_failed",
+        return self.parse_and_log_error(
+            response,
+            domain="user",
+            action="edit_failed",
             level=logging.ERROR,
             user_id=user_id,
-            status_code=error.statusCode,
-            error=error.message,
         )
-        return error
 
     def delete_user(self, user_id: str, expected_status: int = 200) -> UserApiResponse:
         log_event(self.logger, "user", "delete_attempt", user_id=user_id)
@@ -118,14 +86,10 @@ class UsersAPI(CustomRequester):
                 return user
             log_event(self.logger, "user", "delete_success", user_id=user_id)
             return None
-        error = ErrorResponse.model_validate(response.json())
-        log_event(
-            self.logger,
-            "user",
-            "delete_failed",
+        return self.parse_and_log_error(
+            response,
+            domain="user",
+            action="delete_failed",
             level=logging.WARNING,
             user_id=user_id,
-            status_code=error.statusCode,
-            error=error.message,
         )
-        return error

@@ -294,51 +294,56 @@ def new_registered_user(
 
     user_id = None
     try:
-        register_data = user_payload.model_dump(by_alias=True)
-        register_data["passwordRepeat"] = password_repeat
-        registration_response = api_manager.auth_api.register(user_data=register_data, expected_status=201)
-        assert isinstance(registration_response, User), "Фикстура 'new_registered_user' ожидала успешной регистрации"
-        log_event(
-            LOGGER,
-            "fixture",
-            "resource_created",
-            fixture="new_registered_user",
-            resource="user",
-            email=user_payload.email,
-            resource_id=registration_response.id,
-        )
-        user_id = registration_response.id
-
-    except ValueError as e:
-        log_event(
-            LOGGER,
-            "fixture",
-            "error",
-            level=logging.ERROR,
-            fixture="new_registered_user",
-            email=user_payload.email,
-            error=str(e),
-        )
-        pytest.fail(f"Регистрация прервана с непредвиденной ошибкой: {e}")
-
-    if "Authorization" in api_manager.session.headers:
-        del api_manager.session.headers["Authorization"]
-
-    yield api_manager, user_payload
-    if user_id:
         try:
-            api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
-            api_manager.users_api.delete_user(user_id, expected_status=200)
-        except AssertionError:
+            register_data = user_payload.model_dump(by_alias=True)
+            register_data["passwordRepeat"] = password_repeat
+            registration_response = api_manager.auth_api.register(user_data=register_data, expected_status=201)
+            assert isinstance(registration_response, User), (
+                "Фикстура 'new_registered_user' ожидала успешной регистрации"
+            )
             log_event(
                 LOGGER,
                 "fixture",
-                "cleanup_skip",
-                level=logging.WARNING,
+                "resource_created",
                 fixture="new_registered_user",
                 resource="user",
-                resource_id=user_id,
-                reason="already_deleted_or_unavailable",
+                email=user_payload.email,
+                resource_id=registration_response.id,
             )
-    session.close()
-    log_event(LOGGER, "fixture", "finish", fixture="new_registered_user", email=user_payload.email)
+            user_id = registration_response.id
+        except Exception as e:
+            log_event(
+                LOGGER,
+                "fixture",
+                "error",
+                level=logging.ERROR,
+                fixture="new_registered_user",
+                email=user_payload.email,
+                error=str(e),
+            )
+            pytest.fail(f"Регистрация прервана с непредвиденной ошибкой: {e}")
+
+        if "Authorization" in api_manager.session.headers:
+            del api_manager.session.headers["Authorization"]
+
+        yield api_manager, user_payload
+    finally:
+        if user_id:
+            try:
+                api_manager.auth_api.login(
+                    email=user_payload.email, password=user_payload.password, expected_status=200
+                )
+                api_manager.users_api.delete_user(user_id, expected_status=200)
+            except AssertionError:
+                log_event(
+                    LOGGER,
+                    "fixture",
+                    "cleanup_skip",
+                    level=logging.WARNING,
+                    fixture="new_registered_user",
+                    resource="user",
+                    resource_id=user_id,
+                    reason="already_deleted_or_unavailable",
+                )
+        session.close()
+        log_event(LOGGER, "fixture", "finish", fixture="new_registered_user", email=user_payload.email)

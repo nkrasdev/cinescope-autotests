@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 _SENSITIVE_KEYS = {
@@ -14,6 +15,18 @@ _SENSITIVE_KEYS = {
     "api_key",
     "secret",
 }
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _is_project_record(record: logging.LogRecord) -> bool:
+    pathname = getattr(record, "pathname", "")
+    if pathname:
+        try:
+            return Path(pathname).resolve().is_relative_to(_PROJECT_ROOT)
+        except OSError:
+            return False
+
+    return record.name.startswith("tests")
 
 
 def _is_sensitive_key(key: str) -> bool:
@@ -80,6 +93,7 @@ class LegacyMessageFilter(logging.Filter):
     """Converts free-form logs to the standardized [DOMAIN][ACTION] format."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        record.msg = standardize_legacy_message(record.getMessage())
-        record.args = ()
+        if _is_project_record(record):
+            record.msg = standardize_legacy_message(record.getMessage())
+            record.args = ()
         return True

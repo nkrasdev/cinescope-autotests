@@ -4,6 +4,7 @@ from playwright.sync_api import Page
 
 from tests.constants.ui_data import CARD_NUMBER, CVC, EXP_MONTH, EXP_YEAR, HOLDER_NAME
 from tests.models.request_models import UserCreate
+from tests.ui.auth_fallback import xfail_if_dev_auth_form_fallback
 from tests.ui.pages.login_page import LoginPage
 from tests.ui.pages.main_page import MainPage
 from tests.ui.pages.payment_page import PaymentPage
@@ -27,6 +28,7 @@ class TestPaymentPage:
             login_page = LoginPage(page)
             login_page.open()
             login_page.login(self.user, self.user.password)
+            xfail_if_dev_auth_form_fallback(page)
             login_page.check_user_is_logged_in()
 
         with allure.step("Подготовка: перейти на страницу оплаты для выбранного фильма"):

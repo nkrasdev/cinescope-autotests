@@ -10,7 +10,7 @@ class UserCreate(BaseModel):
 
     email: EmailStr
     full_name: Annotated[str, Field(min_length=1, alias="fullName")]
-    password: Annotated[str, Field(min_length=5)]
+    password: Annotated[str, Field(min_length=8)]
 
 
 class MovieCreate(BaseModel):

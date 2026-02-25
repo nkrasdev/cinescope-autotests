@@ -1,7 +1,5 @@
 import logging
 
-import requests
-
 from tests.constants.endpoints import (
     PAYMENT_CREATE_ENDPOINT,
     PAYMENT_FIND_ALL_ENDPOINT,
@@ -19,10 +17,6 @@ type PaymentsListApiResponse = PaymentsListResponse | ErrorResponse
 
 
 class PaymentAPI(CustomRequester):
-    def __init__(self, session: requests.Session, base_url: str) -> None:
-        super().__init__(session, base_url=base_url)
-        self.logger = logging.getLogger(self.__class__.__name__)
-
     def create_payment(self, payload: dict, expected_status: int | None = 201) -> PaymentCreateResponse:
         log_event(self.logger, "payment", "create_attempt", movie_id=payload.get("movieId"))
         response = self.post(PAYMENT_CREATE_ENDPOINT, json=payload, expected_status=expected_status)
@@ -30,21 +24,18 @@ class PaymentAPI(CustomRequester):
             payment = PaymentRegistryResponse.model_validate(response.json())
             log_event(self.logger, "payment", "create_success", status=payment.status.value)
             return payment
-        body = response.json()
+
+        try:
+            body = response.json()
+        except ValueError:
+            body = None
+
         payment_status = body.get("error", {}).get("status") if isinstance(body, dict) else None
         if isinstance(payment_status, str) and payment_status in PaymentStatus._value2member_map_:
             log_event(self.logger, "payment", "create_failed", level=logging.WARNING, status=payment_status)
             return PaymentRegistryResponse(status=PaymentStatus(payment_status))
-        error = ErrorResponse.model_validate(body)
-        log_event(
-            self.logger,
-            "payment",
-            "create_failed",
-            level=logging.ERROR,
-            status_code=error.statusCode,
-            error=error.message,
-        )
-        return error
+
+        return self.parse_and_log_error(response, domain="payment", action="create_failed", level=logging.ERROR)
 
     def get_current_user_payments(self, expected_status: int = 200) -> PaymentsResponse:
         log_event(self.logger, "payment", "list_current_user_attempt")
@@ -53,16 +44,9 @@ class PaymentAPI(CustomRequester):
             payments = [PaymentResponse.model_validate(item) for item in response.json()]
             log_event(self.logger, "payment", "list_current_user_success", count=len(payments))
             return payments
-        error = ErrorResponse.model_validate(response.json())
-        log_event(
-            self.logger,
-            "payment",
-            "list_current_user_failed",
-            level=logging.ERROR,
-            status_code=error.statusCode,
-            error=error.message,
+        return self.parse_and_log_error(
+            response, domain="payment", action="list_current_user_failed", level=logging.ERROR
         )
-        return error
 
     def get_user_payments(self, user_id: str, expected_status: int = 200) -> PaymentsResponse:
         log_event(self.logger, "payment", "list_user_attempt", user_id=user_id)
@@ -71,17 +55,13 @@ class PaymentAPI(CustomRequester):
             payments = [PaymentResponse.model_validate(item) for item in response.json()]
             log_event(self.logger, "payment", "list_user_success", user_id=user_id, count=len(payments))
             return payments
-        error = ErrorResponse.model_validate(response.json())
-        log_event(
-            self.logger,
-            "payment",
-            "list_user_failed",
+        return self.parse_and_log_error(
+            response,
+            domain="payment",
+            action="list_user_failed",
             level=logging.ERROR,
             user_id=user_id,
-            status_code=error.statusCode,
-            error=error.message,
         )
-        return error
 
     def get_all_payments(self, params: dict | None = None, expected_status: int = 200) -> PaymentsListApiResponse:
         log_event(self.logger, "payment", "list_all_attempt", params=params or "default")
@@ -90,13 +70,4 @@ class PaymentAPI(CustomRequester):
             payments = PaymentsListResponse.model_validate(response.json())
             log_event(self.logger, "payment", "list_all_success", count=payments.count)
             return payments
-        error = ErrorResponse.model_validate(response.json())
-        log_event(
-            self.logger,
-            "payment",
-            "list_all_failed",
-            level=logging.ERROR,
-            status_code=error.statusCode,
-            error=error.message,
-        )
-        return error
+        return self.parse_and_log_error(response, domain="payment", action="list_all_failed", level=logging.ERROR)

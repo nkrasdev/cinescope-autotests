@@ -4,10 +4,13 @@ import logging
 import os
 import time
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import allure
 import requests
+from pydantic import ValidationError
 
+from tests.models.response_models import ErrorResponse
 from tests.utils.logging_utils import log_event
 
 
@@ -16,12 +19,33 @@ class CustomRequester:
     RETRYABLE_EXCEPTIONS = (requests.exceptions.Timeout, requests.exceptions.ConnectionError)
     MAX_REQUEST_ATTEMPTS = 2
     RETRY_DELAY_SECONDS = 1.0
+    SLEEP_FN = staticmethod(time.sleep)
+    SENSITIVE_FIELDS = {
+        "authorization",
+        "email",
+        "password",
+        "passwordrepeat",
+        "token",
+        "access_token",
+        "refresh_token",
+        "apikey",
+        "api_key",
+        "secret",
+        "cardnumber",
+        "securitycode",
+        "cvc",
+        "cvv",
+    }
 
     def __init__(self, session: requests.Session, base_url: str):
         self.session = session
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
         self.session.headers.update(self.base_headers)
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+    def _build_url(self, endpoint: str) -> str:
+        normalized_endpoint = endpoint if endpoint.startswith("/") else f"/{endpoint}"
+        return f"{self.base_url}{normalized_endpoint}"
 
     def _send_request(
         self,
@@ -32,7 +56,7 @@ class CustomRequester:
         json_data: Any = None,
         **kwargs,
     ) -> requests.Response:
-        url = f"{self.base_url}{endpoint}"
+        url = self._build_url(endpoint)
 
         expected_status = kwargs.pop("expected_status", None)
 
@@ -69,7 +93,7 @@ class CustomRequester:
                         max_attempts=self.MAX_REQUEST_ATTEMPTS,
                         delay_sec=self.RETRY_DELAY_SECONDS,
                     )
-                    time.sleep(self.RETRY_DELAY_SECONDS)
+                    self.SLEEP_FN(self.RETRY_DELAY_SECONDS)
 
             if response is None:
                 raise RuntimeError(f"Не удалось выполнить запрос {method.upper()} {url}")
@@ -103,6 +127,40 @@ class CustomRequester:
                 f"Ожидался статус-код {expected_status}, но получен {response.status_code}. "
                 f"Тело ответа: {response.text}"
             )
+
+    @staticmethod
+    def parse_error_response(response: requests.Response) -> ErrorResponse:
+        try:
+            payload = response.json()
+        except (ValueError, json.JSONDecodeError):
+            message = response.text.strip() or response.reason or "Request failed with non-JSON response."
+            return ErrorResponse(statusCode=response.status_code, message=message)
+
+        if isinstance(payload, dict):
+            normalized_payload = dict(payload)
+            normalized_payload.setdefault("statusCode", response.status_code)
+            normalized_payload.setdefault("message", response.reason or "Request failed.")
+            try:
+                return ErrorResponse.model_validate(normalized_payload)
+            except ValidationError:
+                return ErrorResponse(statusCode=response.status_code, message=response.text or str(normalized_payload))
+
+        return ErrorResponse(statusCode=response.status_code, message=str(payload))
+
+    def parse_and_log_error(
+        self,
+        response: requests.Response,
+        *,
+        domain: str,
+        action: str,
+        level: int = logging.ERROR,
+        **context: Any,
+    ) -> ErrorResponse:
+        error = self.parse_error_response(response)
+        log_context: dict[str, Any] = {"status_code": error.statusCode, "error": error.message}
+        log_context.update(context)
+        log_event(self.logger, domain, action, level=level, **log_context)
+        return error
 
     def _attach_request_details(self, method, url, params, data, json_data):
         allure.attach(
@@ -151,6 +209,65 @@ class CustomRequester:
             return payload
         return f"{payload[:max_length]}... <truncated {len(payload) - max_length} chars>"
 
+    @classmethod
+    def _is_sensitive_field(cls, key: str) -> bool:
+        normalized = key.lower().replace("-", "").replace("_", "")
+        return any(field in normalized for field in cls.SENSITIVE_FIELDS)
+
+    @classmethod
+    def _redact_mapping_like(cls, payload: Any) -> Any:
+        if isinstance(payload, dict):
+            redacted: dict[Any, Any] = {}
+            for key, value in payload.items():
+                key_str = str(key)
+                if cls._is_sensitive_field(key_str):
+                    redacted[key] = "<redacted>"
+                    continue
+                redacted[key] = cls._redact_mapping_like(value)
+            return redacted
+        if isinstance(payload, list):
+            return [cls._redact_mapping_like(item) for item in payload]
+        return payload
+
+    @classmethod
+    def _sanitize_request_body(cls, body: str) -> str:
+        stripped = body.strip()
+        if not stripped:
+            return body
+
+        with contextlib.suppress(json.JSONDecodeError):
+            parsed = json.loads(stripped)
+            redacted = cls._redact_mapping_like(parsed)
+            return json.dumps(redacted, ensure_ascii=False)
+
+        parsed_query = parse_qsl(stripped, keep_blank_values=True)
+        if parsed_query:
+            redacted_query = [
+                (key, "<redacted>" if cls._is_sensitive_field(key) else value) for key, value in parsed_query
+            ]
+            return urlencode(redacted_query, doseq=True)
+
+        return body
+
+    @classmethod
+    def _sanitize_url(cls, url: str) -> str:
+        split = urlsplit(url)
+        if not split.query:
+            return url
+
+        query_pairs = parse_qsl(split.query, keep_blank_values=True)
+        if not query_pairs:
+            return url
+
+        redacted_query = [(k, "<redacted>" if cls._is_sensitive_field(k) else v) for k, v in query_pairs]
+        return urlunsplit(
+            (split.scheme, split.netloc, split.path, urlencode(redacted_query, doseq=True), split.fragment)
+        )
+
+    @staticmethod
+    def _escape_single_quotes(value: str) -> str:
+        return value.replace("'", "'\"'\"'")
+
     def log_request_and_response(self, response):
         try:
             request = response.request
@@ -162,24 +279,28 @@ class CustomRequester:
                 headers_list.append(f"-H '{header}: {display_value}'")
             headers_str = " \\\n".join(headers_list)
             full_test_name = f"pytest {os.environ.get('PYTEST_CURRENT_TEST', '').replace(' (call)', '')}"
+            sanitized_url = self._sanitize_url(request.url)
 
             body = ""
             if hasattr(request, "body") and request.body is not None:
-                body = request.body.decode("utf-8") if isinstance(request.body, bytes) else str(request.body)
-                body = f"-d '{body}' \n" if body != "{}" and body else ""
+                raw_body = request.body.decode("utf-8") if isinstance(request.body, bytes) else str(request.body)
+                if raw_body and raw_body != "{}":
+                    sanitized_body = self._sanitize_request_body(raw_body)
+                    escaped_body = self._escape_single_quotes(self._truncate_payload(sanitized_body))
+                    body = f"-d '{escaped_body}' \n"
 
             log_event(
                 self.logger,
                 "http",
                 "request",
                 method=request.method,
-                url=request.url,
+                url=sanitized_url,
                 test=full_test_name,
             )
             self.logger.info(
                 "curl -X %s '%s' \\\n%s \\\n%s",
                 request.method,
-                request.url,
+                sanitized_url,
                 headers_str,
                 body,
             )
@@ -195,7 +316,7 @@ class CustomRequester:
                 "response",
                 level=logging.WARNING if not response.ok else logging.INFO,
                 method=request.method,
-                url=request.url,
+                url=sanitized_url,
                 status_code=response.status_code,
                 ok=response.ok,
             )

@@ -1,8 +1,6 @@
 import logging
 from typing import Any
 
-import requests
-
 from tests.constants.endpoints import (
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
@@ -25,10 +23,6 @@ type ConfirmEmailApiResponse = dict[str, Any] | ErrorResponse
 
 
 class AuthAPI(CustomRequester):
-    def __init__(self, session: requests.Session, base_url: str) -> None:
-        super().__init__(session, base_url=base_url)
-        self.logger = logging.getLogger(self.__class__.__name__)
-
     def login(
         self,
         email: str | None = ADMIN_EMAIL,
@@ -47,17 +41,13 @@ class AuthAPI(CustomRequester):
             log_event(self.logger, "auth", "login_success", email=email)
             return login_response
 
-        error_response = ErrorResponse.model_validate(response.json())
-        log_event(
-            self.logger,
-            "auth",
-            "login_failed",
+        return self.parse_and_log_error(
+            response,
+            domain="auth",
+            action="login_failed",
             level=logging.ERROR,
             email=email,
-            status_code=error_response.statusCode,
-            error=error_response.message,
         )
-        return error_response
 
     def register(self, user_data: dict, expected_status: int = 201) -> User | ErrorResponse:
         email = user_data.get("email", "N/A")
@@ -68,17 +58,13 @@ class AuthAPI(CustomRequester):
             log_event(self.logger, "auth", "register_success", email=user.email, user_id=user.id)
             return user
 
-        error_response = ErrorResponse.model_validate(response.json())
-        log_event(
-            self.logger,
-            "auth",
-            "register_failed",
+        return self.parse_and_log_error(
+            response,
+            domain="auth",
+            action="register_failed",
             level=logging.ERROR,
             email=email,
-            status_code=error_response.statusCode,
-            error=error_response.message,
         )
-        return error_response
 
     def logout(self, expected_status: int = 200) -> LogoutApiResponse:
         log_event(self.logger, "auth", "logout_attempt")
@@ -90,8 +76,7 @@ class AuthAPI(CustomRequester):
             except ValueError:
                 result = {"message": response.text}
             return result
-        log_event(self.logger, "auth", "logout_failed", level=logging.ERROR, status_code=response.status_code)
-        return ErrorResponse.model_validate(response.json())
+        return self.parse_and_log_error(response, domain="auth", action="logout_failed", level=logging.ERROR)
 
     def refresh_token(self, expected_status: int = 200) -> RefreshTokenApiResponse:
         log_event(self.logger, "auth", "refresh_attempt")
@@ -100,8 +85,7 @@ class AuthAPI(CustomRequester):
             log_event(self.logger, "auth", "refresh_success")
             result: dict[str, Any] = response.json()
             return result
-        log_event(self.logger, "auth", "refresh_failed", level=logging.ERROR, status_code=response.status_code)
-        return ErrorResponse.model_validate(response.json())
+        return self.parse_and_log_error(response, domain="auth", action="refresh_failed", level=logging.ERROR)
 
     def confirm_email(self, token: str, expected_status: int = 200) -> ConfirmEmailApiResponse:
         log_event(self.logger, "auth", "confirm_email_attempt", token=token)
@@ -110,5 +94,4 @@ class AuthAPI(CustomRequester):
             log_event(self.logger, "auth", "confirm_email_success")
             result: dict[str, Any] = response.json()
             return result
-        log_event(self.logger, "auth", "confirm_email_failed", level=logging.WARNING, status_code=response.status_code)
-        return ErrorResponse.model_validate(response.json())
+        return self.parse_and_log_error(response, domain="auth", action="confirm_email_failed", level=logging.WARNING)

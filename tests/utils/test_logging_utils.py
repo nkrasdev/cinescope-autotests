@@ -59,3 +59,20 @@ def test_legacy_message_filter_keeps_structured_logs_unchanged(caplog) -> None:
         logger.info('[TEST][START] nodeid="tests/api/test_auth.py::test_login"')
 
     assert caplog.records[-1].message == '[TEST][START] nodeid="tests/api/test_auth.py::test_login"'
+
+
+def test_legacy_message_filter_does_not_rewrite_external_record() -> None:
+    record = logging.LogRecord(
+        name="urllib3.connectionpool",
+        level=logging.INFO,
+        pathname="/usr/lib/python3.13/site-packages/urllib3/connectionpool.py",
+        lineno=100,
+        msg="external message",
+        args=(),
+        exc_info=None,
+    )
+
+    processed = LegacyMessageFilter().filter(record)
+
+    assert processed is True
+    assert record.msg == "external message"

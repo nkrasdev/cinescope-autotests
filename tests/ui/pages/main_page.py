@@ -1,5 +1,3 @@
-import re
-
 from playwright.sync_api import Locator, Page, expect
 
 from tests.constants.timeouts import Timeout
@@ -27,18 +25,7 @@ class MainPage(BasePage):
     def get_first_movie_details(self) -> dict:
         first_card = self.movie_cards.first
         expect(first_card).to_be_visible(timeout=Timeout.DEFAULT_TIMEOUT.value)
-        details_link = first_card.get_by_role("link", name="Подробнее")
-        href = details_link.get_attribute("href")
-        if not href:
-            raise ValueError("Could not find href attribute on movie details link.")
-
-        match = re.search(r"/movies/(\d+)", href)
-        if not match:
-            raise ValueError(f"Could not extract movie ID from href: {href}")
-
-        movie_id = int(match.group(1))
-        title = first_card.locator("h3").inner_text()
-        return {"id": movie_id, "title": title}
+        return self.extract_movie_card_details(first_card)
 
     def click_more_button_on_movie_card(self, card: Locator):
         card.get_by_role("link", name="Подробнее").click()

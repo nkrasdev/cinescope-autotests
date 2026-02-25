@@ -2,243 +2,197 @@
 
 [![CI](https://github.com/nkrasdev/cinescope-autotests/actions/workflows/ci.yml/badge.svg)](https://github.com/nkrasdev/cinescope-autotests/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.13%2B-blue?logo=python)](https://www.python.org/)
-[![Allure Report](https://img.shields.io/badge/Allure%20Report-v3-brightgreen?logo=allure)](https://allurereport.org/docs/v3/)
-[![Ruff](https://img.shields.io/badge/code%20style-ruff-000000?logo=ruff)](https://github.com/astral-sh/ruff)
-[![mypy](https://img.shields.io/badge/type%20checked-mypy-blue)](https://mypy-lang.org/)
+[![Ruff](https://img.shields.io/badge/lint-ruff-000000?logo=ruff)](https://github.com/astral-sh/ruff)
+[![ty](https://img.shields.io/badge/type%20checked-ty-blue)](https://docs.astral.sh/ty/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://pre-commit.com/)
 
-Automated API/UI tests for the Cinescope service with modern tooling and best practices.
+Автотесты API и UI для сервиса Cinescope.
 
-## Features
+Проект ориентирован на воспроизводимый запуск в локальной среде и в CI: линтинг, проверка типов, security-проверки, отчёты покрытия и Allure-артефакты.
 
-- ✅ **Type-safe** with mypy and Pydantic
-- ✅ **Code quality** with Ruff linter/formatter
-- ✅ **Security checks** with Bandit
-- ✅ **Coverage reports** with pytest-cov
-- ✅ **Parallel execution** with pytest-xdist
-- ✅ **Pre-commit hooks** for quality assurance
-- ✅ **Allure Report v3** for beautiful test reporting
-- ✅ **CI/CD ready** with GitHub Actions
+## Содержание
 
-## Stack
+- [Технологии](#технологии)
+- [Требования](#требования)
+- [Быстрый старт](#быстрый-старт)
+- [Запуск тестов](#запуск-тестов)
+- [Проверки качества](#проверки-качества)
+- [Allure и отчёты](#allure-и-отчёты)
+- [CI Pipeline](#ci-pipeline)
+- [Структура проекта](#структура-проекта)
+- [Документация](#документация)
 
-[![Python](https://img.shields.io/badge/Python-3.13%2B-3776AB?logo=python)](https://www.python.org/)
-[![pytest](https://img.shields.io/badge/pytest-framework-0A0A0A?logo=pytest)](https://pytest.org/)
-[![requests](https://img.shields.io/badge/requests-http-2CA5E0?logo=python)](https://requests.readthedocs.io/)
-[![Pydantic](https://img.shields.io/badge/Pydantic-data-E92063?logo=pydantic)](https://docs.pydantic.dev/)
-[![Playwright](https://img.shields.io/badge/Playwright-UI-2EAD33?logo=playwright)](https://playwright.dev/)
-[![uv](https://img.shields.io/badge/uv-package%20manager-5C2D91?logo=rust)](https://github.com/astral-sh/uv)
-[![Allure Report](https://img.shields.io/badge/Allure%20Report-v3-1E90FF?logo=allure)](https://allurereport.org/docs/v3/)
+## Технологии
 
-### Development Tools
+- `pytest` — test runner
+- `pytest-playwright` — UI тесты
+- `requests` — HTTP-клиент
+- `pydantic` / `pydantic-settings` — валидация и конфигурация
+- `ruff` — линтинг и форматирование
+- `ty` — статическая типизация
+- `bandit` — security checks
+- `pytest-cov` / `pytest-xdist` — coverage и параллельный запуск
+- `pre-commit` — локальные хуки качества
 
-- **Ruff** - Fast Python linter and formatter
-- **mypy** - Static type checker
-- **Bandit** - Security vulnerability scanner
-- **pytest-cov** - Code coverage measurement
-- **pytest-xdist** - Parallel test execution
-- **pre-commit** - Git hooks for code quality
+## Требования
 
-## Quickstart
+- Python `3.13+`
+- `uv`
+- Node.js (только для локального просмотра Allure отчёта)
 
-### 1. Install dependencies
+## Быстрый старт
+
+### 1. Установка зависимостей
 
 ```bash
 make install
-# or
+# или
 uv sync --dev
 ```
 
-### 2. Setup environment
+### 2. Настройка окружения
 
 ```bash
 cp .env.example .env
-# Edit .env with your credentials
 ```
 
-### 3. Install pre-commit hooks (optional but recommended)
+Минимальные переменные в `.env`:
+
+- `BASE_URL`
+- `BASE_UI_URL`
+- `BASE_AUTH_URL`
+- `BASE_PAYMENT_URL`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+
+### 3. Установка pre-commit хуков
 
 ```bash
 make pre-commit-install
 ```
 
-### 4. Run tests
+### 4. (Опционально) установка браузера для UI
 
 ```bash
-make test-api        # Run API tests
-make test-ui         # Run UI tests
-make test-cov        # Run tests with coverage
-make test-parallel   # Run tests in parallel
+make install-playwright
 ```
 
-## Available Commands
+## Запуск тестов
 
-Run `make help` to see all available commands:
+### API
 
 ```bash
-make help
+make test-api
 ```
 
-### Development Commands
+### UI
 
 ```bash
-make install           # Install dependencies
-make format            # Format code with Ruff
-make lint              # Run linting checks
-make type-check        # Run type checking with mypy
-make security          # Run security checks with Bandit
-make check-all         # Run all checks (lint, format, type-check, security)
+make test-ui
 ```
 
-### Testing Commands
+### Все тесты
 
 ```bash
-make test              # Run API tests (default)
-make test-api          # Run API tests
-make test-ui           # Run UI tests
-make test-all          # Run all tests
-make test-cov          # Run tests with coverage report
-make test-parallel     # Run tests in parallel
-make test-smoke        # Run smoke tests only
+make test-all
 ```
 
-### Utility Commands
+### Smoke
 
 ```bash
-make clean             # Clean up generated files
-make ci-local          # Run CI checks locally
-make pre-commit-run    # Run pre-commit on all files
+make test-smoke
 ```
 
-## Project Structure
-
-```
-cinescope-autotests/
-├── tests/
-│   ├── api/              # API tests
-│   ├── ui/               # UI tests with Page Object Model
-│   ├── clients/          # API clients
-│   ├── models/           # Pydantic models
-│   ├── constants/        # Constants and endpoints
-│   ├── utils/            # Utilities and helpers
-│   └── conftest.py       # Pytest fixtures
-├── .github/workflows/    # CI/CD configuration
-├── ARCHITECTURE.md       # Architecture documentation
-├── CONTRIBUTING.md       # Contribution guidelines
-└── pyproject.toml        # Project configuration
-```
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation.
-
-## Allure Report v3
-
-### Install Allure
-
-**Global installation:**
-```bash
-npm install -g allure
-allure --version
-```
-
-**Local installation:**
-```bash
-npm install allure
-npx allure --version
-```
-
-### Generate and view report
+### Параллельный запуск API
 
 ```bash
-# After running tests
-allure serve allure-results
-# or
-npx allure serve allure-results
+make test-parallel
 ```
 
-### CI Artifacts
-
-Allure results are automatically uploaded as artifacts in CI and can be downloaded from GitHub Actions.
-
-## Coverage Reports
-
-Coverage reports are generated automatically when running:
+### Покрытие
 
 ```bash
 make test-cov
+make test-cov-ui
 ```
 
-Reports are available in:
-- Terminal output (summary)
-- `htmlcov/index.html` (detailed HTML report)
-- `coverage.xml` (for CI integration)
-
-## Type Checking
-
-This project uses mypy for static type checking:
+## Проверки качества
 
 ```bash
-make type-check
+make lint           # ruff check
+make format         # ruff format
+make format-check   # ruff format --check
+make type-check     # ty check
+make security       # bandit
+make check-all      # lint + format-check + type-check + security
 ```
 
-Type hints are enforced for:
-- All API clients
-- All models
-- Test utilities
-
-## Security
-
-Security checks are performed using Bandit:
+Запуск всех pre-commit хуков вручную:
 
 ```bash
-make security
+make pre-commit-run
+# или
+uv run pre-commit run --all-files
 ```
 
-Pre-commit hooks automatically check for:
-- Private keys in code
-- Known security vulnerabilities
-- Insecure code patterns
+Локальный прогон, приближенный к CI:
 
-## Contributing
+```bash
+make ci-local
+```
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+## Allure и отчёты
 
-### Quick Start for Contributors
+Тесты пишут результаты в `allure-results/`.
 
-1. Fork the repository
-2. Create a feature branch
-3. Install dependencies and pre-commit hooks
-   ```bash
-   make install
-   make pre-commit-install
-   ```
-4. Make your changes
-5. Run checks locally
-   ```bash
-   make ci-local
-   ```
-6. Submit a Pull Request
+Локальный просмотр:
 
-## CI/CD
+```bash
+allure serve allure-results
+# или
+npx allure serve allure-results
+```
 
-The project uses GitHub Actions for continuous integration with the following jobs:
+Coverage-отчёты:
 
-1. **Lint & Format Check** - Ruff code quality checks
-2. **Type Checking** - mypy static type analysis
-3. **Security Check** - Bandit vulnerability scanning
-4. **API Tests** - Run tests with coverage reporting
+- `htmlcov/index.html`
+- `coverage.xml`
 
-All checks must pass before merging.
+## CI Pipeline
 
-## Requirements
+GitHub Actions (`.github/workflows/ci.yml`) запускает:
 
-- Python 3.13+
-- Node.js (for Allure Report)
-- uv package manager
+1. `Lint & Format Check`
+2. `Type Checking (ty)`
+3. `Security Check (bandit)`
+4. `API Tests` (с coverage)
+5. `UI Tests`
 
-## License
+Особенности:
 
-This project is for internal testing purposes.
+- API/UI тесты пропускаются, если отсутствуют нужные secrets
+- Allure результаты и артефакты логов/скриншотов сохраняются как artifacts
 
-## Support
+## Структура проекта
 
-For questions or issues, please create an issue on GitHub.
+```text
+.
+├── tests/
+│   ├── api/                # API тесты
+│   ├── ui/                 # UI тесты и Page Object Model
+│   ├── clients/            # API-клиенты
+│   ├── models/             # Pydantic модели
+│   ├── request/            # HTTP/request layer
+│   ├── utils/              # утилиты и генераторы данных
+│   └── conftest.py         # фикстуры и pytest hooks
+├── .github/workflows/ci.yml
+├── pyproject.toml
+├── Makefile
+└── README.md
+```
+
+## Документация
+
+- Архитектура: [ARCHITECTURE.md](ARCHITECTURE.md)
+- Рекомендации: [BEST_PRACTICES.md](BEST_PRACTICES.md)
+- Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)

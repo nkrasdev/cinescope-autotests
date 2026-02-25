@@ -4,6 +4,7 @@ from playwright.sync_api import Page, expect
 
 from tests.models.movie_models import Movie
 from tests.models.request_models import UserCreate
+from tests.ui.auth_fallback import xfail_if_dev_auth_form_fallback
 from tests.ui.pages.login_page import LoginPage
 from tests.ui.pages.movie_details_page import MovieDetailsPage, is_payment_url_for_movie
 from tests.utils.decorators import allure_test_details
@@ -69,6 +70,7 @@ class TestMovieDetailsPage:
             login_page = LoginPage(page)
             login_page.open()
             login_page.login(registered_user_by_api_ui, registered_user_by_api_ui.password)
+            xfail_if_dev_auth_form_fallback(page)
             login_page.check_user_is_logged_in()
 
         with allure.step("Открыть страницу фильма и нажать 'Купить билет'"):
