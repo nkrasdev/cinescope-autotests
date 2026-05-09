@@ -128,106 +128,50 @@ def admin_api_manager() -> Generator[ApiManager]:
         session.close()
 
 
-@pytest.fixture
-def created_movie(admin_api_manager, movie_payload: MovieCreate):
-    log_event(LOGGER, "fixture", "start", fixture="created_movie")
+def _movie_fixture_factory(admin_api_manager: ApiManager, movie_payload: MovieCreate, published: bool):
+    fixture_name = "created_movie" if published else "created_movie_unpublished"
+    log_event(LOGGER, "fixture", "start", fixture=fixture_name)
     movie_id = None
-    try:
-        created_movie_model = admin_api_manager.movies_api.create_movie(movie_data=movie_payload, expected_status=201)
-        assert isinstance(created_movie_model, Movie), "Фикстура 'created_movie' ожидала успешного создания фильма"
-        movie_id = created_movie_model.id
-        log_event(
-            LOGGER, "fixture", "resource_created", fixture="created_movie", resource="movie", resource_id=movie_id
-        )
-
-        yield created_movie_model
-
-    finally:
-        if movie_id:
-            log_event(
-                LOGGER,
-                "fixture",
-                "cleanup_start",
-                fixture="created_movie",
-                resource="movie",
-                resource_id=movie_id,
-            )
-            try:
-                admin_api_manager.movies_api.delete_movie(movie_id, expected_status=200)
-                log_event(
-                    LOGGER,
-                    "fixture",
-                    "cleanup_success",
-                    fixture="created_movie",
-                    resource="movie",
-                    resource_id=movie_id,
-                )
-            except AssertionError:
-                log_event(
-                    LOGGER,
-                    "fixture",
-                    "cleanup_skip",
-                    level=logging.WARNING,
-                    fixture="created_movie",
-                    resource="movie",
-                    resource_id=movie_id,
-                    reason="already_deleted_or_unavailable",
-                )
-
-
-@pytest.fixture
-def created_movie_unpublished(admin_api_manager, movie_payload: MovieCreate):
-    log_event(LOGGER, "fixture", "start", fixture="created_movie_unpublished")
-    movie_id = None
-    payload = movie_payload.model_copy(update={"published": False})
+    payload = movie_payload.model_copy(update={"published": published})
     try:
         created_movie_model = admin_api_manager.movies_api.create_movie(movie_data=payload, expected_status=201)
         assert isinstance(created_movie_model, Movie), (
-            "Фикстура 'created_movie_unpublished' ожидала успешного создания фильма"
+            f"Фикстура '{fixture_name}' ожидала успешного создания фильма"
         )
         movie_id = created_movie_model.id
         log_event(
-            LOGGER,
-            "fixture",
-            "resource_created",
-            fixture="created_movie_unpublished",
-            resource="movie",
-            resource_id=movie_id,
+            LOGGER, "fixture", "resource_created",
+            fixture=fixture_name, resource="movie", resource_id=movie_id,
         )
-
         yield created_movie_model
-
     finally:
         if movie_id:
             log_event(
-                LOGGER,
-                "fixture",
-                "cleanup_start",
-                fixture="created_movie_unpublished",
-                resource="movie",
-                resource_id=movie_id,
+                LOGGER, "fixture", "cleanup_start",
+                fixture=fixture_name, resource="movie", resource_id=movie_id,
             )
             try:
                 admin_api_manager.movies_api.delete_movie(movie_id, expected_status=200)
                 log_event(
-                    LOGGER,
-                    "fixture",
-                    "cleanup_success",
-                    fixture="created_movie_unpublished",
-                    resource="movie",
-                    resource_id=movie_id,
+                    LOGGER, "fixture", "cleanup_success",
+                    fixture=fixture_name, resource="movie", resource_id=movie_id,
                 )
             except AssertionError:
                 log_event(
-                    LOGGER,
-                    "fixture",
-                    "cleanup_skip",
-                    level=logging.WARNING,
-                    fixture="created_movie_unpublished",
-                    resource="movie",
-                    resource_id=movie_id,
-                    reason="already_deleted_or_unavailable",
+                    LOGGER, "fixture", "cleanup_skip",
+                    level=logging.WARNING, fixture=fixture_name, resource="movie",
+                    resource_id=movie_id, reason="already_deleted_or_unavailable",
                 )
+
+
+@pytest.fixture
+def created_movie(admin_api_manager: ApiManager, movie_payload: MovieCreate):
+    yield from _movie_fixture_factory(admin_api_manager, movie_payload, published=True)
+
+
+@pytest.fixture
+def created_movie_unpublished(admin_api_manager: ApiManager, movie_payload: MovieCreate):
+    yield from _movie_fixture_factory(admin_api_manager, movie_payload, published=False)
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
