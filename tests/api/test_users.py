@@ -1,9 +1,10 @@
+import contextlib
 import logging
 
 import allure
 import pytest_check as check
 
-from tests.models.response_models import UsersListResponse
+from tests.models.response_models import ErrorResponse, UsersListResponse
 from tests.models.user_models import User
 from tests.utils.data_generator import UserDataGenerator
 from tests.utils.decorators import allure_test_details
@@ -143,3 +144,226 @@ class TestUsers:
         finally:
             if user_id:
                 admin_api_manager.users_api.delete_user(user_id, expected_status=200)
+
+
+@allure.epic("Пользователи")
+@allure.feature("Управление пользователями")
+class TestUsersNegative:
+    @allure_test_details(
+        story="Удаление пользователя",
+        title="Тест ошибки: пользователь не может удалить другого пользователя",
+        description="Проверка, что USER получает 403 при попытке удалить другого пользователя.",
+        severity=allure.severity_level.CRITICAL,
+    )
+    def test_user_cannot_delete_other_user(self, api_manager, admin_api_manager, faker_instance):
+        user_a_payload, pw_a_repeat = UserDataGenerator.generate_user_payload(faker_instance)
+        reg_a = user_a_payload.model_dump(by_alias=True)
+        reg_a["passwordRepeat"] = pw_a_repeat
+
+        user_b_payload, pw_b = UserDataGenerator.generate_user_payload(faker_instance)
+        create_b = user_b_payload.model_dump(by_alias=True)
+        create_b.update({"verified": True, "banned": False})
+
+        user_a_id = None
+        user_b_id = None
+        try:
+            with allure.step("Регистрация пользователя A"):
+                resp_a = api_manager.auth_api.register(user_data=reg_a, expected_status=201)
+            assert isinstance(resp_a, User)
+            user_a_id = resp_a.id
+            api_manager.auth_api.login(email=user_a_payload.email, password=user_a_payload.password, expected_status=200)
+
+            with allure.step("Создание пользователя B через admin"):
+                resp_b = admin_api_manager.users_api.create_user(user_data=create_b, expected_status=201)
+            assert isinstance(resp_b, User)
+            user_b_id = resp_b.id
+
+            with allure.step("Попытка пользователя A удалить пользователя B"):
+                response = api_manager.users_api.delete_user(user_b_id, expected_status=403)
+            check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+            if isinstance(response, ErrorResponse):
+                check.equal(response.statusCode, 403)
+        finally:
+            for uid in [user_a_id, user_b_id]:
+                if uid:
+                    with contextlib.suppress(AssertionError):
+                        admin_api_manager.users_api.delete_user(uid, expected_status=200)
+
+    @allure_test_details(
+        story="Удаление пользователя",
+        title="Тест ошибки удаления несуществующего пользователя",
+        description="Проверка, что API возвращает 404 при удалении несуществующего пользователя.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_delete_non_existent_user(self, admin_api_manager):
+        non_existent_id = "00000000-0000-0000-0000-000000000000"
+        with allure.step(f"Попытка удалить несуществующего пользователя с ID {non_existent_id}"):
+            response = admin_api_manager.users_api.delete_user(non_existent_id, expected_status=404)
+        check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+        if isinstance(response, ErrorResponse):
+            check.equal(response.statusCode, 404)
+
+    @allure_test_details(
+        story="Получение пользователя",
+        title="Тест ошибки получения пользователя без прав администратора",
+        description="Проверка, что обычный пользователь получает 403 при запросе данных другого пользователя.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_get_user_forbidden(self, api_manager, admin_api_manager, faker_instance):
+        user_payload, pw_repeat = UserDataGenerator.generate_user_payload(faker_instance)
+        reg = user_payload.model_dump(by_alias=True)
+        reg["passwordRepeat"] = pw_repeat
+        user_id = None
+        try:
+            resp = api_manager.auth_api.register(user_data=reg, expected_status=201)
+            assert isinstance(resp, User)
+            user_id = resp.id
+            api_manager.auth_api.login(email=user_payload.email, password=user_payload.password, expected_status=200)
+
+            with allure.step("Попытка обычного пользователя получить данные по ID"):
+                response = api_manager.users_api.get_user(user_id, expected_status=403)
+            check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+            if isinstance(response, ErrorResponse):
+                check.equal(response.statusCode, 403)
+        finally:
+            if user_id:
+                with contextlib.suppress(AssertionError):
+                    admin_api_manager.users_api.delete_user(user_id, expected_status=200)
+
+    @allure_test_details(
+        story="Получение пользователя",
+        title="Тест ошибки получения несуществующего пользователя",
+        description="Проверка, что API возвращает 404 для несуществующего ID.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_get_non_existent_user(self, admin_api_manager):
+        with allure.step("Запрос несуществующего пользователя"):
+            response = admin_api_manager.users_api.get_user(
+                "00000000-0000-0000-0000-000000000000", expected_status=404
+            )
+        check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+        if isinstance(response, ErrorResponse):
+            check.equal(response.statusCode, 404)
+
+    @allure_test_details(
+        story="Создание пользователя",
+        title="Тест ошибки создания пользователя без прав администратора",
+        description="Проверка, что неаутентифицированный запрос на создание пользователя получает 403.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_create_user_forbidden(self, api_manager, faker_instance):
+        user_payload, _ = UserDataGenerator.generate_user_payload(faker_instance)
+        create_data = user_payload.model_dump(by_alias=True)
+        create_data.update({"verified": True, "banned": False})
+
+        with allure.step("Создание пользователя без токена администратора"):
+            response = api_manager.users_api.create_user(user_data=create_data, expected_status=403)
+        check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+        if isinstance(response, ErrorResponse):
+            check.equal(response.statusCode, 403)
+
+    @allure_test_details(
+        story="Создание пользователя",
+        title="Тест ошибки создания пользователя с дублирующимся email",
+        description="Проверка, что API возвращает 409 при создании пользователя с уже существующим email.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_create_user_duplicate_email(self, admin_api_manager, faker_instance):
+        user_payload, _ = UserDataGenerator.generate_user_payload(faker_instance)
+        create_data = user_payload.model_dump(by_alias=True)
+        create_data.update({"verified": True, "banned": False})
+        user_id = None
+        try:
+            resp = admin_api_manager.users_api.create_user(user_data=create_data, expected_status=201)
+            assert isinstance(resp, User)
+            user_id = resp.id
+
+            with allure.step("Повторное создание пользователя с тем же email"):
+                response = admin_api_manager.users_api.create_user(user_data=create_data, expected_status=409)
+            check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+            if isinstance(response, ErrorResponse):
+                check.equal(response.statusCode, 409)
+        finally:
+            if user_id:
+                with contextlib.suppress(AssertionError):
+                    admin_api_manager.users_api.delete_user(user_id, expected_status=200)
+
+    @allure_test_details(
+        story="Редактирование пользователя",
+        title="Тест ошибки редактирования пользователя с невалидными данными",
+        description="Проверка, что API возвращает 400 при передаче невалидных данных в PATCH /user/{id}.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_edit_user_bad_request(self, admin_api_manager, faker_instance):
+        user_payload, _ = UserDataGenerator.generate_user_payload(faker_instance)
+        create_data = user_payload.model_dump(by_alias=True)
+        create_data.update({"verified": True, "banned": False})
+        user_id = None
+        try:
+            resp = admin_api_manager.users_api.create_user(user_data=create_data, expected_status=201)
+            assert isinstance(resp, User)
+            user_id = resp.id
+
+            with allure.step("Редактирование с невалидными данными (roles как строка вместо массива)"):
+                response = admin_api_manager.users_api.edit_user(
+                    user_id=user_id,
+                    user_data={"roles": "INVALID_ROLE", "verified": True, "banned": False},
+                    expected_status=400,
+                )
+            check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+            if isinstance(response, ErrorResponse):
+                check.equal(response.statusCode, 400)
+        finally:
+            if user_id:
+                with contextlib.suppress(AssertionError):
+                    admin_api_manager.users_api.delete_user(user_id, expected_status=200)
+
+    @allure_test_details(
+        story="Редактирование пользователя",
+        title="Тест ошибки редактирования несуществующего пользователя",
+        description="Проверка, что API возвращает 404 при попытке редактировать несуществующего пользователя.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_edit_non_existent_user(self, admin_api_manager):
+        with allure.step("Редактирование несуществующего пользователя"):
+            response = admin_api_manager.users_api.edit_user(
+                user_id="00000000-0000-0000-0000-000000000000",
+                user_data={"roles": ["USER"], "verified": True, "banned": False},
+                expected_status=404,
+            )
+        check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+        if isinstance(response, ErrorResponse):
+            check.equal(response.statusCode, 404)
+
+    @allure_test_details(
+        story="Список пользователей",
+        title="Тест получения списка пользователей с фильтром по ролям",
+        description="Проверка, что фильтр roles корректно работает в GET /user.",
+        severity=allure.severity_level.MINOR,
+    )
+    def test_get_users_filter_by_role(self, admin_api_manager):
+        params = {"roles": ["USER"]}
+        with allure.step(f"Запрос списка пользователей с фильтром: {params}"):
+            response = admin_api_manager.users_api.get_users(params=params, expected_status=200)
+        check.is_true(
+            isinstance(response, UsersListResponse), f"Ожидался UsersListResponse, получен {type(response)}"
+        )
+        if isinstance(response, UsersListResponse):
+            for user in response.users:
+                check.is_true("USER" in user.roles, f"Пользователь {user.email} не имеет роли USER")
+
+    @allure_test_details(
+        story="Список пользователей",
+        title="Тест получения списка пользователей с пагинацией",
+        description="Проверка, что параметры page и pageSize корректно работают в GET /user.",
+        severity=allure.severity_level.MINOR,
+    )
+    def test_get_users_with_pagination(self, admin_api_manager):
+        params = {"page": 1, "pageSize": 5}
+        with allure.step(f"Запрос списка пользователей с пагинацией: {params}"):
+            response = admin_api_manager.users_api.get_users(params=params, expected_status=200)
+        check.is_true(
+            isinstance(response, UsersListResponse), f"Ожидался UsersListResponse, получен {type(response)}"
+        )
+        if isinstance(response, UsersListResponse):
+            check.is_true(len(response.users) <= 5, "Количество пользователей не должно превышать pageSize=5")
