@@ -87,6 +87,25 @@ def pytest_runtest_logreport(report):
     )
 
 
+_XDIST_GROUPS: dict[tuple[str, ...], str] = {
+    ("movie", "genre", "review", "mock"): "movies",
+    ("auth",): "auth",
+    ("user",): "users",
+    ("payment",): "payments",
+}
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    for item in items:
+        if "tests/api/" not in Path(str(item.fspath)).as_posix():
+            continue
+        stem = Path(item.fspath).stem
+        for keywords, group in _XDIST_GROUPS.items():
+            if any(k in stem for k in keywords):
+                item.add_marker(pytest.mark.xdist_group(group))
+                break
+
+
 @pytest.fixture(scope="session")
 def faker_instance() -> Faker:
     return Faker("ru_RU")

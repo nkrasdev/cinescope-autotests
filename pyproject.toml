@@ -71,6 +71,7 @@ markers = [
 	"smoke: marks tests as smoke tests",
 	"integration: marks tests as integration tests",
 	"slow: marks tests as slow running tests",
+	"xdist_group: group tests for parallel execution isolation",
 ]
 log_cli = true
 log_cli_level = "INFO"
