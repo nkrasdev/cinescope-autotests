@@ -1,3 +1,4 @@
+import contextlib
 import logging
 
 import allure
@@ -60,6 +61,88 @@ class TestAuthentication:
 
 
 @allure.epic("Аутентификация")
+@allure.feature("Вход в систему")
+class TestLoginNegative:
+    @allure_test_details(
+        story="Ошибки входа",
+        title="Тест ошибки входа с неверным паролем",
+        description="Проверка, что API возвращает 401 при входе с неверным паролем.",
+        severity=allure.severity_level.CRITICAL,
+    )
+    def test_login_wrong_password(self, api_manager, admin_api_manager, faker_instance):
+        user_payload, password_repeat = UserDataGenerator.generate_user_payload(faker_instance)
+        register_data = user_payload.model_dump(by_alias=True)
+        register_data["passwordRepeat"] = password_repeat
+        user_id = None
+        try:
+            reg = api_manager.auth_api.register(user_data=register_data, expected_status=201)
+            assert isinstance(reg, User)
+            user_id = reg.id
+
+            with allure.step("Попытка входа с неверным паролем"):
+                response = api_manager.auth_api.login(
+                    email=user_payload.email,
+                    password="WrongPassword999",
+                    expected_status=401,
+                )
+            check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+            if isinstance(response, ErrorResponse):
+                check.equal(response.statusCode, 401)
+        finally:
+            if user_id:
+                with contextlib.suppress(AssertionError):
+                    admin_api_manager.users_api.delete_user(user_id, expected_status=200)
+
+    @allure_test_details(
+        story="Ошибки входа",
+        title="Тест ошибки входа несуществующего пользователя",
+        description="Проверка, что API возвращает 404 при входе с несуществующим email.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_login_user_not_found(self, api_manager):
+        with allure.step("Попытка входа с несуществующим email"):
+            response = api_manager.auth_api.login(
+                email="nonexistent-autotest-404@example.com",
+                password="SomePassword123",
+                expected_status=404,
+            )
+        check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+        if isinstance(response, ErrorResponse):
+            check.equal(response.statusCode, 404)
+
+    @allure_test_details(
+        story="Ошибки входа",
+        title="Тест ошибки входа неподтверждённого пользователя",
+        description="Проверка, что API возвращает 403 при входе пользователя с verified=false.",
+        severity=allure.severity_level.CRITICAL,
+    )
+    def test_login_unconfirmed_user(self, api_manager, admin_api_manager, faker_instance):
+        user_payload, _ = UserDataGenerator.generate_user_payload(faker_instance)
+        create_data = user_payload.model_dump(by_alias=True)
+        create_data.update({"verified": False, "banned": False})
+        user_id = None
+        try:
+            with allure.step("Создание неподтверждённого пользователя через admin API"):
+                created = admin_api_manager.users_api.create_user(user_data=create_data, expected_status=201)
+            assert isinstance(created, User)
+            user_id = created.id
+
+            with allure.step("Попытка входа неподтверждённого пользователя"):
+                response = api_manager.auth_api.login(
+                    email=user_payload.email,
+                    password=user_payload.password,
+                    expected_status=403,
+                )
+            check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+            if isinstance(response, ErrorResponse):
+                check.equal(response.statusCode, 403)
+        finally:
+            if user_id:
+                with contextlib.suppress(AssertionError):
+                    admin_api_manager.users_api.delete_user(user_id, expected_status=200)
+
+
+@allure.epic("Аутентификация")
 @allure.feature("Регистрация")
 class TestRegistration:
     @allure_test_details(
@@ -85,6 +168,36 @@ class TestRegistration:
         finally:
             if user_id:
                 admin_api_manager.users_api.delete_user(user_id, expected_status=200)
+
+    @allure_test_details(
+        story="Ошибки регистрации",
+        title="Тест ошибки регистрации с пустым телом",
+        description="Проверка, что API возвращает 400 при регистрации с пустым телом запроса.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_register_bad_request_empty_body(self, api_manager):
+        with allure.step("Отправка запроса регистрации с пустым телом"):
+            response = api_manager.auth_api.register(user_data={}, expected_status=400)
+        check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+        if isinstance(response, ErrorResponse):
+            check.equal(response.statusCode, 400)
+
+    @allure_test_details(
+        story="Ошибки регистрации",
+        title="Тест ошибки регистрации с уже существующим email",
+        description="Проверка, что API возвращает 409 при регистрации с email, который уже используется.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_register_duplicate_email(self, new_registered_user):
+        api_manager, user_payload = new_registered_user
+        payload = user_payload.model_dump(by_alias=True)
+        payload["passwordRepeat"] = user_payload.password
+
+        with allure.step("Повторная регистрация с тем же email"):
+            response = api_manager.auth_api.register(user_data=payload, expected_status=409)
+        check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
+        if isinstance(response, ErrorResponse):
+            check.equal(response.statusCode, 409)
 
 
 @allure.epic("Аутентификация")
@@ -127,3 +240,17 @@ class TestSession:
         check.is_true(isinstance(response, ErrorResponse), f"Ожидался ответ ErrorResponse, но получен {type(response)}")
         if isinstance(response, ErrorResponse):
             check.equal(response.statusCode, 404)
+
+    @allure_test_details(
+        story="Обновление токена",
+        title="Тест ошибки обновления токена без авторизации",
+        description="Проверка, что refresh-endpoint возвращает 403 без токена авторизации.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_refresh_tokens_unauthorized(self, api_manager):
+        with allure.step("Запрос обновления токенов без авторизации"):
+            response = api_manager.auth_api.refresh_token(expected_status=403)
+        check.is_true(
+            isinstance(response, (dict, ErrorResponse)),
+            f"Ожидался dict или ErrorResponse, получен {type(response)}",
+        )
