@@ -114,9 +114,13 @@ class TestReviews:
                 movie_id=created_movie.id, user_id=user_id, expected_status=200
             )
         check.is_true(isinstance(hidden_review, Review))
+        if isinstance(hidden_review, Review):
+            check.is_true(hidden_review.hidden is True, "Поле hidden должно быть True после скрытия")
 
         with allure.step("Показ отзыва"):
             shown_review = admin_api_manager.movies_api.show_review(
                 movie_id=created_movie.id, user_id=user_id, expected_status=200
             )
         check.is_true(isinstance(shown_review, Review))
+        if isinstance(shown_review, Review):
+            check.is_true(shown_review.hidden is False, "Поле hidden должно быть False после показа")

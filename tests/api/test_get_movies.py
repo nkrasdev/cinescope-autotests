@@ -151,6 +151,24 @@ class TestGetMovies:
                 check.equal(dates, sorted(dates, reverse=True), "Фильмы не отсортированы по убыванию даты")
 
     @allure_test_details(
+        story="Сортировка",
+        title="Тест сортировки фильмов по дате создания по возрастанию",
+        description="Проверка, что сортировка `createdAt: asc` работает корректно.",
+        severity=allure.severity_level.NORMAL,
+    )
+    def test_get_movies_sort_created_at_asc(self, api_manager):
+        params = {"createdAt": "asc"}
+        with allure.step(f"Отправка GET-запроса с сортировкой по дате: {params}"):
+            LOGGER.info(LogMessages.Movies.ATTEMPT_GET_LIST.format(params))
+            response = api_manager.movies_api.get_movies(params=params)
+        is_list = isinstance(response, MoviesList)
+        check.is_true(is_list, f"Ожидался объект MoviesList, но получен {type(response)}")
+        if is_list:
+            with allure.step("Проверка, что фильмы отсортированы по дате создания в порядке возрастания"):
+                dates = [movie.created_at for movie in response.movies]
+                check.equal(dates, sorted(dates), "Фильмы не отсортированы по возрастанию даты")
+
+    @allure_test_details(
         story="Фильтрация",
         title="Тест получения опубликованных фильмов по умолчанию",
         description="Этот тест проверяет, что по умолчанию API возвращает только опубликованные фильмы (`published: true`).",
