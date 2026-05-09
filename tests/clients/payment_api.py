@@ -30,7 +30,7 @@ class PaymentAPI(CustomRequester):
         except ValueError:
             body = None
 
-        payment_status = body.get("error", {}).get("status") if isinstance(body, dict) else None
+        payment_status = body.get("status") if isinstance(body, dict) else None
         if isinstance(payment_status, str) and payment_status in PaymentStatus._value2member_map_:
             log_event(self.logger, "payment", "create_failed", level=logging.WARNING, status=payment_status)
             return PaymentRegistryResponse(status=PaymentStatus(payment_status))
