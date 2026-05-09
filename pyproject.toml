@@ -106,5 +106,5 @@ exclude_lines = [
 directory = "htmlcov"
 
 [tool.bandit]
-exclude_dirs = ["/tests", "/.venv"]
+exclude_dirs = ["tests", ".venv"]
 skips = ["B101"]  # Skip assert_used in tests

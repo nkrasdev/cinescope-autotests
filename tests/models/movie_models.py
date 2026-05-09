@@ -43,7 +43,7 @@ class Movie(BaseModel):
     genre_id: int = Field(alias="genreId")
     genre: Genre
     created_at: datetime = Field(alias="createdAt")
-    rating: float
+    rating: float = 0.0
 
 
 class MovieWithReviews(Movie):
