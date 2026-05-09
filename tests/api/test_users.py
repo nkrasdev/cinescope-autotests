@@ -172,7 +172,9 @@ class TestUsersNegative:
                 resp_a = api_manager.auth_api.register(user_data=reg_a, expected_status=201)
             assert isinstance(resp_a, User)
             user_a_id = resp_a.id
-            api_manager.auth_api.login(email=user_a_payload.email, password=user_a_payload.password, expected_status=200)
+            api_manager.auth_api.login(
+                email=user_a_payload.email, password=user_a_payload.password, expected_status=200
+            )
 
             with allure.step("Создание пользователя B через admin"):
                 resp_b = admin_api_manager.users_api.create_user(user_data=create_b, expected_status=201)
@@ -237,12 +239,12 @@ class TestUsersNegative:
         description="Проверка, что API возвращает 404 для несуществующего ID.",
         severity=allure.severity_level.NORMAL,
     )
-    @pytest.mark.xfail(reason="API возвращает 200 с пустым телом вместо 404 для несуществующего пользователя", strict=False)
+    @pytest.mark.xfail(
+        reason="API возвращает 200 с пустым телом вместо 404 для несуществующего пользователя", strict=False
+    )
     def test_get_non_existent_user(self, admin_api_manager):
         with allure.step("Запрос несуществующего пользователя"):
-            response = admin_api_manager.users_api.get_user(
-                "00000000-0000-0000-0000-000000000000", expected_status=404
-            )
+            response = admin_api_manager.users_api.get_user("00000000-0000-0000-0000-000000000000", expected_status=404)
         check.is_true(isinstance(response, ErrorResponse), f"Ожидался ErrorResponse, получен {type(response)}")
         if isinstance(response, ErrorResponse):
             check.equal(response.statusCode, 404)
@@ -348,9 +350,7 @@ class TestUsersNegative:
         params = {"roles": ["USER"]}
         with allure.step(f"Запрос списка пользователей с фильтром: {params}"):
             response = admin_api_manager.users_api.get_users(params=params, expected_status=200)
-        check.is_true(
-            isinstance(response, UsersListResponse), f"Ожидался UsersListResponse, получен {type(response)}"
-        )
+        check.is_true(isinstance(response, UsersListResponse), f"Ожидался UsersListResponse, получен {type(response)}")
         if isinstance(response, UsersListResponse):
             for user in response.users:
                 check.is_true("USER" in user.roles, f"Пользователь {user.email} не имеет роли USER")
@@ -365,8 +365,6 @@ class TestUsersNegative:
         params = {"page": 1, "pageSize": 5}
         with allure.step(f"Запрос списка пользователей с пагинацией: {params}"):
             response = admin_api_manager.users_api.get_users(params=params, expected_status=200)
-        check.is_true(
-            isinstance(response, UsersListResponse), f"Ожидался UsersListResponse, получен {type(response)}"
-        )
+        check.is_true(isinstance(response, UsersListResponse), f"Ожидался UsersListResponse, получен {type(response)}")
         if isinstance(response, UsersListResponse):
             check.is_true(len(response.users) <= 5, "Количество пользователей не должно превышать pageSize=5")

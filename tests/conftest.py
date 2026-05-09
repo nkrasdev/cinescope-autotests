@@ -154,32 +154,47 @@ def _movie_fixture_factory(admin_api_manager: ApiManager, movie_payload: MovieCr
     payload = movie_payload.model_copy(update={"published": published})
     try:
         created_movie_model = admin_api_manager.movies_api.create_movie(movie_data=payload, expected_status=201)
-        assert isinstance(created_movie_model, Movie), (
-            f"Фикстура '{fixture_name}' ожидала успешного создания фильма"
-        )
+        assert isinstance(created_movie_model, Movie), f"Фикстура '{fixture_name}' ожидала успешного создания фильма"
         movie_id = created_movie_model.id
         log_event(
-            LOGGER, "fixture", "resource_created",
-            fixture=fixture_name, resource="movie", resource_id=movie_id,
+            LOGGER,
+            "fixture",
+            "resource_created",
+            fixture=fixture_name,
+            resource="movie",
+            resource_id=movie_id,
         )
         yield created_movie_model
     finally:
         if movie_id:
             log_event(
-                LOGGER, "fixture", "cleanup_start",
-                fixture=fixture_name, resource="movie", resource_id=movie_id,
+                LOGGER,
+                "fixture",
+                "cleanup_start",
+                fixture=fixture_name,
+                resource="movie",
+                resource_id=movie_id,
             )
             try:
                 admin_api_manager.movies_api.delete_movie(movie_id, expected_status=200)
                 log_event(
-                    LOGGER, "fixture", "cleanup_success",
-                    fixture=fixture_name, resource="movie", resource_id=movie_id,
+                    LOGGER,
+                    "fixture",
+                    "cleanup_success",
+                    fixture=fixture_name,
+                    resource="movie",
+                    resource_id=movie_id,
                 )
             except AssertionError:
                 log_event(
-                    LOGGER, "fixture", "cleanup_skip",
-                    level=logging.WARNING, fixture=fixture_name, resource="movie",
-                    resource_id=movie_id, reason="already_deleted_or_unavailable",
+                    LOGGER,
+                    "fixture",
+                    "cleanup_skip",
+                    level=logging.WARNING,
+                    fixture=fixture_name,
+                    resource="movie",
+                    resource_id=movie_id,
+                    reason="already_deleted_or_unavailable",
                 )
 
 

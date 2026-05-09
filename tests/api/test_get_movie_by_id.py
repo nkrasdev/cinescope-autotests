@@ -97,8 +97,12 @@ class TestGetMovieById:
         "invalid_id, expected_status",
         [
             (" ", 404),
-            pytest.param("abc", 500, marks=pytest.mark.xfail(reason="API returns 500 for string IDs — known server bug")),
-            pytest.param("null", 500, marks=pytest.mark.xfail(reason="API returns 500 for 'null' string ID — known server bug")),
+            pytest.param(
+                "abc", 500, marks=pytest.mark.xfail(reason="API returns 500 for string IDs — known server bug")
+            ),
+            pytest.param(
+                "null", 500, marks=pytest.mark.xfail(reason="API returns 500 for 'null' string ID — known server bug")
+            ),
         ],
     )
     def test_get_movie_bad_request(self, admin_api_manager, invalid_id, expected_status):
