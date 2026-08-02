@@ -1,19 +1,24 @@
-import functools
 from collections.abc import Callable
+from typing import ParamSpec, TypeVar
 
 import allure
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def allure_test_details(story: str, title: str, description: str, severity: allure.severity_level) -> Callable:
-    def decorator(func):
-        @allure.story(story)
-        @allure.title(title)
-        @allure.description(description)
-        @allure.severity(severity)
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
 
-        return wrapper
+def allure_test_details(
+    story: str,
+    title: str,
+    description: str,
+    severity: allure.severity_level,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Apply the standard Allure metadata without adding a wrapper frame."""
+
+    def decorator(test_function: Callable[P, R]) -> Callable[P, R]:
+        decorated = allure.severity(severity)(test_function)
+        decorated = allure.description(description)(decorated)
+        decorated = allure.title(title)(decorated)
+        return allure.story(story)(decorated)
 
     return decorator

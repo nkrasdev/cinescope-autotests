@@ -79,6 +79,9 @@ make install-playwright
 
 ## Запуск тестов
 
+API, UI, smoke и полный набор запускаются параллельно через `pytest-xdist`. Сценарии, которые изменяют общее
+состояние identity, каталога или платежей, автоматически закрепляются за соответствующей `xdist_group`.
+
 ### API
 
 ```bash
@@ -103,7 +106,7 @@ make test-all
 make test-smoke
 ```
 
-### Параллельный запуск API
+### Явный параллельный запуск API
 
 ```bash
 make test-parallel
@@ -162,16 +165,17 @@ Coverage-отчёты:
 
 GitHub Actions (`.github/workflows/ci.yml`) запускает:
 
-1. `Lint & Format Check`
-2. `Type Checking (ty)`
-3. `Security Check (bandit)`
-4. `API Tests` (с coverage)
-5. `UI Tests`
+1. `Quality gate`: Ruff, `ty`, Bandit и параллельные unit-тесты
+2. `API tests`: параллельные API-тесты с coverage после успешного quality gate
+3. `UI tests`: параллельные Playwright-тесты после успешного quality gate
 
 Особенности:
 
-- API/UI тесты пропускаются, если отсутствуют нужные secrets
-- Allure результаты и артефакты логов/скриншотов сохраняются как artifacts
+- окружение устанавливается из `uv.lock`, кэш `uv` переиспользуется между запусками
+- API/UI тесты не запускаются для PR из форков и Dependabot, где GitHub не передаёт secrets
+- отсутствие обязательных secrets во внутренних запусках завершает job с понятной ошибкой
+- устаревший запуск для той же ветки или PR автоматически отменяется
+- coverage, Allure, логи и Playwright-артефакты сохраняются на 7 дней, в том числе после падения тестов
 
 ## Структура проекта
 
@@ -190,9 +194,3 @@ GitHub Actions (`.github/workflows/ci.yml`) запускает:
 ├── Makefile
 └── README.md
 ```
-
-## Документация
-
-- Архитектура: [ARCHITECTURE.md](ARCHITECTURE.md)
-- Рекомендации: [BEST_PRACTICES.md](BEST_PRACTICES.md)
-- Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)

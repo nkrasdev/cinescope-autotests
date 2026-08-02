@@ -1,6 +1,4 @@
 import logging
-import os
-from collections.abc import Generator
 from pathlib import Path
 
 import allure
@@ -12,19 +10,20 @@ from tests.clients.api_manager import ApiManager
 from tests.constants.endpoints import BASE_URL
 from tests.models.movie_models import Movie
 from tests.models.request_models import MovieCreate, UserCreate
-from tests.models.user_models import User
+from tests.utils.catalog_factory import GenreFactory, MovieFactory
 from tests.utils.data_generator import MovieDataGenerator, UserDataGenerator
 from tests.utils.logging_utils import LegacyMessageFilter, log_event
+from tests.utils.user_factory import AdminUserFactory, RegisteredUserFactory
+from tests.utils.xdist_groups import xdist_group_for_module
 
 LOGGER = logging.getLogger(__name__)
-_LEGACY_FILTER_STATE = {"installed": False}
 
 
 def _install_legacy_message_filter() -> None:
-    if _LEGACY_FILTER_STATE["installed"]:
+    root_logger = logging.getLogger()
+    if any(isinstance(log_filter, LegacyMessageFilter) for log_filter in root_logger.filters):
         return
-    logging.getLogger().addFilter(LegacyMessageFilter())
-    _LEGACY_FILTER_STATE["installed"] = True
+    root_logger.addFilter(LegacyMessageFilter())
 
 
 def _infer_allure_sub_suite(path: Path) -> str:
@@ -41,7 +40,7 @@ def _infer_allure_sub_suite(path: Path) -> str:
 
 
 @pytest.fixture(autouse=True)
-def allure_layer_labels(request):
+def allure_layer_labels(request: pytest.FixtureRequest) -> None:
     path = Path(str(request.node.fspath))
     posix_path = path.as_posix()
     if "tests/api/" in posix_path:
@@ -55,21 +54,15 @@ def allure_layer_labels(request):
     allure.dynamic.sub_suite(_infer_allure_sub_suite(path))
 
 
-def pytest_sessionstart(session):
+def pytest_sessionstart(session: pytest.Session) -> None:
     _install_legacy_message_filter()
 
-    logs_dir = "logs"
-    if not os.path.exists(logs_dir):
-        os.makedirs(logs_dir)
-
-    screenshots_dir = os.path.join(logs_dir, "screenshots")
-    if not os.path.exists(screenshots_dir):
-        os.makedirs(screenshots_dir)
+    Path("logs/screenshots").mkdir(parents=True, exist_ok=True)
 
     log_event(LOGGER, "session", "start")
 
 
-def pytest_runtest_setup(item):
+def pytest_runtest_setup(item: pytest.Item) -> None:
     log_event(LOGGER, "test", "start", nodeid=item.nodeid)
 
 
@@ -87,23 +80,11 @@ def pytest_runtest_logreport(report):
     )
 
 
-_XDIST_GROUPS: dict[tuple[str, ...], str] = {
-    ("movie", "genre", "review", "mock"): "movies",
-    ("auth",): "auth",
-    ("user",): "users",
-    ("payment",): "payments",
-}
-
-
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     for item in items:
-        if "tests/api/" not in Path(str(item.fspath)).as_posix():
-            continue
         stem = Path(item.fspath).stem
-        for keywords, group in _XDIST_GROUPS.items():
-            if any(k in stem for k in keywords):
-                item.add_marker(pytest.mark.xdist_group(group))
-                break
+        if group := xdist_group_for_module(stem):
+            item.add_marker(pytest.mark.xdist_group(group))
 
 
 @pytest.fixture(scope="session")
@@ -112,13 +93,10 @@ def faker_instance() -> Faker:
 
 
 @pytest.fixture(scope="function")
-def api_manager() -> Generator[ApiManager]:
+def api_manager(request: pytest.FixtureRequest) -> ApiManager:
     session = requests.Session()
-    manager = ApiManager(session, base_url=BASE_URL)
-    try:
-        yield manager
-    finally:
-        session.close()
+    request.addfinalizer(session.close)
+    return ApiManager(session, base_url=BASE_URL)
 
 
 @pytest.fixture()
@@ -127,85 +105,74 @@ def user_credentials(faker_instance) -> tuple[UserCreate, str]:
 
 
 @pytest.fixture()
-def movie_payload(faker_instance) -> MovieCreate:
-    return MovieDataGenerator.generate_valid_movie_payload(faker_instance)
+def movie_payload(api_manager: ApiManager, faker_instance: Faker) -> MovieCreate:
+    genres = api_manager.movies_api.get_genres()
+    if not isinstance(genres, list) or not genres:
+        raise AssertionError("Для создания фильма требуется хотя бы один доступный жанр")
+    return MovieDataGenerator.generate_valid_movie_payload(faker_instance, genre_id=genres[0].id)
 
 
-@pytest.fixture()
-def user_credentials_ui(faker_instance) -> tuple[UserCreate, str]:
-    return UserDataGenerator.generate_user_payload(faker_instance)
-
-
-@pytest.fixture(scope="function")
-def admin_api_manager() -> Generator[ApiManager]:
+@pytest.fixture(scope="session")
+def admin_api_manager(request: pytest.FixtureRequest) -> ApiManager:
+    """Return one authenticated admin client per pytest worker process."""
     session = requests.Session()
+    request.addfinalizer(session.close)
     manager = ApiManager(session, base_url=BASE_URL)
     manager.auth_api.login()
-    try:
-        yield manager
-    finally:
-        session.close()
-
-
-def _movie_fixture_factory(admin_api_manager: ApiManager, movie_payload: MovieCreate, published: bool):
-    fixture_name = "created_movie" if published else "created_movie_unpublished"
-    log_event(LOGGER, "fixture", "start", fixture=fixture_name)
-    movie_id = None
-    payload = movie_payload.model_copy(update={"published": published})
-    try:
-        created_movie_model = admin_api_manager.movies_api.create_movie(movie_data=payload, expected_status=201)
-        assert isinstance(created_movie_model, Movie), f"Фикстура '{fixture_name}' ожидала успешного создания фильма"
-        movie_id = created_movie_model.id
-        log_event(
-            LOGGER,
-            "fixture",
-            "resource_created",
-            fixture=fixture_name,
-            resource="movie",
-            resource_id=movie_id,
-        )
-        yield created_movie_model
-    finally:
-        if movie_id:
-            log_event(
-                LOGGER,
-                "fixture",
-                "cleanup_start",
-                fixture=fixture_name,
-                resource="movie",
-                resource_id=movie_id,
-            )
-            try:
-                admin_api_manager.movies_api.delete_movie(movie_id, expected_status=200)
-                log_event(
-                    LOGGER,
-                    "fixture",
-                    "cleanup_success",
-                    fixture=fixture_name,
-                    resource="movie",
-                    resource_id=movie_id,
-                )
-            except AssertionError:
-                log_event(
-                    LOGGER,
-                    "fixture",
-                    "cleanup_skip",
-                    level=logging.WARNING,
-                    fixture=fixture_name,
-                    resource="movie",
-                    resource_id=movie_id,
-                    reason="already_deleted_or_unavailable",
-                )
+    return manager
 
 
 @pytest.fixture
-def created_movie(admin_api_manager: ApiManager, movie_payload: MovieCreate):
-    yield from _movie_fixture_factory(admin_api_manager, movie_payload, published=True)
+def admin_user_factory(
+    admin_api_manager: ApiManager,
+    faker_instance: Faker,
+    request: pytest.FixtureRequest,
+) -> AdminUserFactory:
+    factory = AdminUserFactory(admin_api_manager, faker_instance)
+    request.addfinalizer(factory.cleanup)
+    return factory
 
 
 @pytest.fixture
-def created_movie_unpublished(admin_api_manager: ApiManager, movie_payload: MovieCreate):
-    yield from _movie_fixture_factory(admin_api_manager, movie_payload, published=False)
+def registered_user_factory(
+    api_manager: ApiManager,
+    admin_api_manager: ApiManager,
+    faker_instance: Faker,
+    request: pytest.FixtureRequest,
+) -> RegisteredUserFactory:
+    factory = RegisteredUserFactory(api_manager, admin_api_manager, faker_instance)
+    request.addfinalizer(factory.cleanup)
+    return factory
+
+
+@pytest.fixture
+def movie_factory(
+    admin_api_manager: ApiManager,
+    request: pytest.FixtureRequest,
+) -> MovieFactory:
+    factory = MovieFactory(admin_api_manager)
+    request.addfinalizer(factory.cleanup)
+    return factory
+
+
+@pytest.fixture
+def genre_factory(
+    admin_api_manager: ApiManager,
+    request: pytest.FixtureRequest,
+) -> GenreFactory:
+    factory = GenreFactory(admin_api_manager)
+    request.addfinalizer(factory.cleanup)
+    return factory
+
+
+@pytest.fixture
+def created_movie(movie_factory: MovieFactory, movie_payload: MovieCreate) -> Movie:
+    return movie_factory.create(movie_payload.model_copy(update={"published": True}))
+
+
+@pytest.fixture
+def created_movie_unpublished(movie_factory: MovieFactory, movie_payload: MovieCreate) -> Movie:
+    return movie_factory.create(movie_payload.model_copy(update={"published": False}))
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -215,19 +182,18 @@ def pytest_runtest_makereport(item, call):
 
     if report.when == "call" and report.failed and "page" in item.funcargs:
         page = item.funcargs["page"]
-        screenshots_dir = os.path.join("logs", "screenshots")
-        screenshot_path = os.path.join(screenshots_dir, f"{item.name}_failure.png")
-        page.screenshot(path=screenshot_path)
+        screenshot_path = Path("logs/screenshots") / f"{item.name}_failure.png"
+        page.screenshot(path=str(screenshot_path))
         log_event(
             LOGGER,
             "artifact",
             "saved",
             nodeid=item.nodeid,
             artifact_type="screenshot",
-            path=screenshot_path,
+            path=str(screenshot_path),
         )
         allure.attach.file(
-            screenshot_path,
+            str(screenshot_path),
             name="screenshot",
             attachment_type=allure.attachment_type.PNG,
         )
@@ -235,93 +201,15 @@ def pytest_runtest_makereport(item, call):
 
 @pytest.fixture
 def registered_user_by_api_ui(
-    api_manager: ApiManager, admin_api_manager: ApiManager, user_credentials_ui: tuple[UserCreate, str]
-) -> Generator[UserCreate]:
-    user_payload, password_repeat = user_credentials_ui
-    register_data = user_payload.model_dump(by_alias=True)
-    register_data["passwordRepeat"] = password_repeat
-    response = api_manager.auth_api.register(user_data=register_data, expected_status=201)
-    user_id = response.id if isinstance(response, User) else None
-    try:
-        yield user_payload
-    finally:
-        if user_id:
-            try:
-                admin_api_manager.users_api.delete_user(user_id, expected_status=200)
-            except AssertionError:
-                log_event(
-                    LOGGER,
-                    "fixture",
-                    "cleanup_skip",
-                    level=logging.WARNING,
-                    fixture="registered_user_by_api_ui",
-                    resource="user",
-                    resource_id=user_id,
-                    reason="already_deleted_or_unavailable",
-                )
+    registered_user_factory: RegisteredUserFactory,
+) -> UserCreate:
+    return registered_user_factory.create().credentials
 
 
 @pytest.fixture
 def new_registered_user(
-    user_credentials: tuple[UserCreate, str],
-) -> Generator[tuple[ApiManager, UserCreate]]:
-    log_event(LOGGER, "fixture", "start", fixture="new_registered_user")
-    user_payload, password_repeat = user_credentials
-    session = requests.Session()
-    api_manager = ApiManager(session, base_url=BASE_URL)
-
-    user_id = None
-    try:
-        try:
-            register_data = user_payload.model_dump(by_alias=True)
-            register_data["passwordRepeat"] = password_repeat
-            registration_response = api_manager.auth_api.register(user_data=register_data, expected_status=201)
-            assert isinstance(registration_response, User), (
-                "Фикстура 'new_registered_user' ожидала успешной регистрации"
-            )
-            log_event(
-                LOGGER,
-                "fixture",
-                "resource_created",
-                fixture="new_registered_user",
-                resource="user",
-                email=user_payload.email,
-                resource_id=registration_response.id,
-            )
-            user_id = registration_response.id
-        except Exception as e:
-            log_event(
-                LOGGER,
-                "fixture",
-                "error",
-                level=logging.ERROR,
-                fixture="new_registered_user",
-                email=user_payload.email,
-                error=str(e),
-            )
-            pytest.fail(f"Регистрация прервана с непредвиденной ошибкой: {e}")
-
-        if "Authorization" in api_manager.session.headers:
-            del api_manager.session.headers["Authorization"]
-
-        yield api_manager, user_payload
-    finally:
-        if user_id:
-            try:
-                api_manager.auth_api.login(
-                    email=user_payload.email, password=user_payload.password, expected_status=200
-                )
-                api_manager.users_api.delete_user(user_id, expected_status=200)
-            except AssertionError:
-                log_event(
-                    LOGGER,
-                    "fixture",
-                    "cleanup_skip",
-                    level=logging.WARNING,
-                    fixture="new_registered_user",
-                    resource="user",
-                    resource_id=user_id,
-                    reason="already_deleted_or_unavailable",
-                )
-        session.close()
-        log_event(LOGGER, "fixture", "finish", fixture="new_registered_user", email=user_payload.email)
+    api_manager: ApiManager,
+    registered_user_factory: RegisteredUserFactory,
+) -> tuple[ApiManager, UserCreate]:
+    registered_user = registered_user_factory.create()
+    return api_manager, registered_user.credentials

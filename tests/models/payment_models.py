@@ -1,7 +1,9 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from tests.models.base import ApiModel
 
 
 class PaymentStatus(str, Enum):
@@ -10,11 +12,11 @@ class PaymentStatus(str, Enum):
     ERROR = "ERROR"
 
 
-class PaymentRegistryResponse(BaseModel):
+class PaymentResult(ApiModel):
     status: PaymentStatus
 
 
-class PaymentResponse(BaseModel):
+class PaymentResponse(ApiModel):
     id: int
     user_id: str = Field(alias="userId")
     movie_id: int = Field(alias="movieId")
@@ -24,7 +26,7 @@ class PaymentResponse(BaseModel):
     status: PaymentStatus
 
 
-class PaymentsListResponse(BaseModel):
+class PaymentsPage(ApiModel):
     payments: list[PaymentResponse]
     count: int
     page: int

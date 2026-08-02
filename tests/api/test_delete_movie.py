@@ -1,16 +1,9 @@
-import logging
-
 import allure
 import pytest
-import pytest_check as check
 
 from tests.constants.endpoints import NON_EXISTENT_ID
-from tests.constants.log_messages import LogMessages
-from tests.models.movie_models import Movie
-from tests.models.response_models import DeletedObject, ErrorResponse
+from tests.models.response_models import DeletedResource, ErrorResponse
 from tests.utils.decorators import allure_test_details
-
-LOGGER = logging.getLogger(__name__)
 
 
 @allure.epic("Фильмы")
@@ -18,7 +11,7 @@ LOGGER = logging.getLogger(__name__)
 class TestDeleteMovie:
     @allure_test_details(
         story="Успешное удаление фильма",
-        title="Тест успешного удаления фильма администратором",
+        title="Проверка успешного удаления фильма администратором",
         description="""
         Проверка полного цикла успешного удаления фильма.
         Шаги:
@@ -29,89 +22,65 @@ class TestDeleteMovie:
         """,
         severity=allure.severity_level.CRITICAL,
     )
-    def test_delete_movie_success(self, admin_api_manager, movie_payload):
-        with allure.step("Подготовка: создание нового фильма для последующего удаления"):
-            LOGGER.info(f"Создание тестового фильма с названием: '{movie_payload.name}'")
-            created_movie_response = admin_api_manager.movies_api.create_movie(movie_payload, expected_status=201)
-            is_movie = isinstance(created_movie_response, Movie)
-            check.is_true(is_movie, f"Ожидался объект Movie, но получен {type(created_movie_response)}")
-            if not is_movie:
-                LOGGER.error(f"Не удалось создать фильм для теста. Ответ: {created_movie_response}")
-                pytest.fail("Не удалось создать фильм для теста, дальнейшие шаги невозможны.")
-            movie_id = created_movie_response.id
-            LOGGER.info(f"Фильм для теста успешно создан, ID: {movie_id}")
+    def test_delete_movie_success(self, admin_api_manager, created_movie, movie_factory):
+        movie_id = created_movie.id
 
         with allure.step(f"Отправка запроса на удаление фильма с ID: {movie_id}"):
-            LOGGER.info(LogMessages.Movies.ATTEMPT_DELETE.format(movie_id))
             deleted_movie_response = admin_api_manager.movies_api.delete_movie(movie_id=movie_id, expected_status=200)
         with allure.step("Проверка, что ID в ответе совпадает с ID удаленного фильма"):
-            is_deleted = isinstance(deleted_movie_response, DeletedObject)
-            check.is_true(is_deleted, f"Ожидался объект DeletedObject, но получен {type(deleted_movie_response)}")
-            if is_deleted:
-                LOGGER.info(LogMessages.Movies.DELETE_SUCCESS.format(created_movie_response.name, movie_id))
-                check.equal(deleted_movie_response.id, movie_id, "ID в ответе должен совпадать с ID удаленного фильма")
+            assert isinstance(deleted_movie_response, DeletedResource), (
+                f"Ожидался объект DeletedResource, но получен {type(deleted_movie_response)}"
+            )
+            assert deleted_movie_response.id == movie_id, "ID в ответе должен совпадать с ID удаленного фильма"
+            movie_factory.mark_deleted(movie_id)
 
         with allure.step("Проверка, что фильм действительно удален (GET-запрос возвращает 404)"):
-            LOGGER.info(f"Контрольная проверка: попытка получить удаленный фильм с ID: {movie_id}")
             get_response = admin_api_manager.movies_api.get_movie_by_id(movie_id=movie_id, expected_status=404)
-            is_error = isinstance(get_response, ErrorResponse)
-            check.is_true(is_error, "Ожидалась ошибка при получении удаленного фильма")
-            if is_error:
-                LOGGER.info(f"Получена ожидаемая ошибка 404 Not Found для фильма ID {movie_id}")
+            assert isinstance(get_response, ErrorResponse), "Ожидалась ошибка при получении удаленного фильма"
+            assert get_response.status_code == 404
 
     @allure_test_details(
         story="Попытка удаления фильма неавторизованным пользователем",
-        title="Тест ошибки удаления фильма без авторизации",
-        description="Этот тест проверяет, что неавторизованный пользователь получает ошибку 401 при попытке удалить фильм.",
+        title="Проверка ошибки удаления фильма без авторизации",
+        description="Проверка, что неавторизованный пользователь получает ошибку 401 при попытке удалить фильм.",
         severity=allure.severity_level.NORMAL,
     )
     def test_delete_movie_unauthorized(self, api_manager, created_movie):
         movie_id = created_movie.id
         with allure.step(f"Попытка удаления фильма с ID {movie_id} без токена авторизации"):
-            LOGGER.info(f"Попытка удаления фильма с ID {movie_id} без авторизации")
             response = api_manager.movies_api.delete_movie(
                 movie_id=movie_id,
                 expected_status=401,
             )
         with allure.step("Проверка ответа об ошибке 'Unauthorized'"):
-            is_error = isinstance(response, ErrorResponse)
-            check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
-            if is_error:
-                check.equal(response.statusCode, 401)
+            assert isinstance(response, ErrorResponse), f"Ожидался объект ErrorResponse, но получен {type(response)}"
+            assert response.status_code == 401
 
     @allure_test_details(
         story="Попытка удаления несуществующего фильма",
-        title="Тест ошибки удаления фильма с несуществующим ID",
-        description="Этот тест проверяет, что система возвращает ошибку 404 Not Found при попытке удалить фильм с ID, которого нет в базе.",
+        title="Проверка ошибки удаления фильма с несуществующим ID",
+        description="Проверка, что система возвращает ошибку 404 Not Found при попытке удалить фильм с ID, которого нет в базе.",
         severity=allure.severity_level.NORMAL,
     )
     @pytest.mark.parametrize("non_existent_id", [0, -1, NON_EXISTENT_ID])
     def test_delete_non_existent_movie(self, admin_api_manager, non_existent_id):
-        allure.dynamic.title(f"Тест удаления фильма с несуществующим ID: {non_existent_id}")
+        allure.dynamic.title(f"Проверка удаления фильма с несуществующим ID: {non_existent_id}")
         with allure.step(f"Попытка удаления фильма с несуществующим ID: {non_existent_id}"):
-            LOGGER.info(LogMessages.Movies.ATTEMPT_DELETE.format(non_existent_id))
             response = admin_api_manager.movies_api.delete_movie(movie_id=non_existent_id, expected_status=404)
         with allure.step("Проверка ответа об ошибке 'Фильм не найден'"):
-            is_error = isinstance(response, ErrorResponse)
-            check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
-            if is_error:
-                LOGGER.info(f"Получена ожидаемая ошибка: {response.message}")
-                check.is_in("Фильм не найден", response.message)
+            assert isinstance(response, ErrorResponse), f"Ожидался объект ErrorResponse, но получен {type(response)}"
+            assert "Фильм не найден" in response.message_text
 
     @allure_test_details(
         story="Попытка удаления фильма с невалидным ID",
-        title="Тест ошибки удаления фильма с невалидным форматом ID",
-        description="Этот тест проверяет, что система корректно обрабатывает запрос на удаление с ID неверного формата (не целое число).",
+        title="Проверка ошибки удаления фильма с невалидным форматом ID",
+        description="Проверка, что система корректно обрабатывает запрос на удаление с ID неверного формата (не целое число).",
         severity=allure.severity_level.MINOR,
     )
     def test_delete_movie_with_bad_request(self, admin_api_manager):
         bad_id = "abc"
         with allure.step(f"Попытка удаления фильма с нецелочисленным ID ('{bad_id}')"):
-            LOGGER.info(LogMessages.Movies.ATTEMPT_DELETE.format(bad_id))
             response = admin_api_manager.movies_api.delete_movie(movie_id=bad_id, expected_status=404)
         with allure.step("Проверка ответа об ошибке"):
-            is_error = isinstance(response, ErrorResponse)
-            check.is_true(is_error, f"Ожидался объект ErrorResponse, но получен {type(response)}")
-            if is_error:
-                LOGGER.info(f"Получена ожидаемая ошибка 404. Ответ: {response.message}")
-                check.equal(response.statusCode, 404)
+            assert isinstance(response, ErrorResponse), f"Ожидался объект ErrorResponse, но получен {type(response)}"
+            assert response.status_code == 404

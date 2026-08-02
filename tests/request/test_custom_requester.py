@@ -1,6 +1,6 @@
 import logging
 from unittest.mock import Mock
-from urllib.parse import parse_qsl, urlsplit
+from uuid import uuid4
 
 import pytest
 import requests
@@ -46,7 +46,7 @@ def test_parse_error_response_handles_non_json_body() -> None:
     parsed = CustomRequester.parse_error_response(response)
 
     assert isinstance(parsed, ErrorResponse)
-    assert parsed.statusCode == 502
+    assert parsed.status_code == 502
     assert parsed.message == "<html>upstream failed</html>"
 
 
@@ -76,6 +76,24 @@ def test_send_request_uses_injected_sleep_function(monkeypatch: pytest.MonkeyPat
 
     assert response is successful_response
     sleep_spy.assert_called_once_with(CustomRequester.RETRY_DELAY_SECONDS)
+
+
+def test_send_request_does_not_retry_non_idempotent_method(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = Mock()
+    session.headers = {}
+    session.request.side_effect = requests.exceptions.ReadTimeout("request outcome is unknown")
+
+    sleep_spy = Mock()
+    monkeypatch.setattr(CustomRequester, "SLEEP_FN", sleep_spy)
+    monkeypatch.setattr(CustomRequester, "_attach_request_details", lambda *args, **kwargs: None)
+
+    requester = CustomRequester(session=session, base_url="https://example.test")
+
+    with pytest.raises(requests.exceptions.ReadTimeout):
+        requester.post("/payments", json={"amount": 1})
+
+    session.request.assert_called_once()
+    sleep_spy.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -110,37 +128,69 @@ def test_send_request_normalizes_url(
     assert session.request.call_args.args[1] == expected_url
 
 
-def test_sanitize_request_body_redacts_json_sensitive_fields() -> None:
-    raw_body = '{"email":"user@example.com","password":"secret","card":{"cardNumber":"4242","securityCode":123}}'
+def test_request_allure_attachments_redact_sensitive_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = Mock()
+    session.headers = {}
+    requester = CustomRequester(session=session, base_url="https://example.test")
+    attachment_bodies: list[str] = []
+    password = uuid4().hex
 
-    sanitized = CustomRequester._sanitize_request_body(raw_body)
+    monkeypatch.setattr(
+        "tests.request.custom_requester.allure.attach",
+        lambda body, **_: attachment_bodies.append(body),
+    )
 
-    assert "secret" not in sanitized
-    assert "4242" not in sanitized
-    assert "user@example.com" not in sanitized
-    assert sanitized.count("<redacted>") >= 3
+    requester._attach_request_details(
+        "POST",
+        "https://example.test/login?email=%3Credacted%3E",
+        {"email": "user@example.com", "page": 1},
+        None,
+        {"email": "user@example.com", "password": password, "card": {"cardNumber": "4242"}},
+    )
+
+    attachments = "\n".join(attachment_bodies)
+    assert "user@example.com" not in attachments
+    assert password not in attachments
+    assert "4242" not in attachments
+    assert "<redacted>" in attachments
 
 
-def test_sanitize_request_body_redacts_form_sensitive_fields() -> None:
-    raw_body = "email=user@example.com&password=secret&movieId=42"
+def test_response_allure_attachment_redacts_sensitive_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = Mock()
+    session.headers = {}
+    requester = CustomRequester(session=session, base_url="https://example.test")
+    response = Mock()
+    response.status_code = 200
+    response.json.return_value = {
+        "accessToken": "raw-token",
+        "user": {"email": "user@example.com", "id": "user-id"},
+    }
+    attachment_bodies: list[str] = []
 
-    sanitized = CustomRequester._sanitize_request_body(raw_body)
-    pairs = dict(parse_qsl(sanitized, keep_blank_values=True))
+    monkeypatch.setattr(
+        "tests.request.custom_requester.allure.attach",
+        lambda body, **_: attachment_bodies.append(body),
+    )
 
-    assert pairs["email"] == "<redacted>"
-    assert pairs["password"] == "<redacted>"
-    assert pairs["movieId"] == "42"
+    requester._attach_response_details(response)
+
+    attachments = "\n".join(attachment_bodies)
+    assert "raw-token" not in attachments
+    assert "user@example.com" not in attachments
+    assert "user-id" in attachments
 
 
-def test_sanitize_url_redacts_sensitive_query_fields() -> None:
-    raw_url = "https://example.test/login?email=user@example.com&password=secret&page=1"
+def test_status_validation_does_not_expose_sensitive_response_values() -> None:
+    session = Mock()
+    session.headers = {}
+    requester = CustomRequester(session=session, base_url="https://example.test")
+    response = Mock(status_code=500, text='{"password":"server-echoed-secret"}')
 
-    sanitized = CustomRequester._sanitize_url(raw_url)
-    query = dict(parse_qsl(urlsplit(sanitized).query, keep_blank_values=True))
+    with pytest.raises(AssertionError) as error:
+        requester._assert_expected_status(response, expected_status=200)
 
-    assert query["email"] == "<redacted>"
-    assert query["password"] == "<redacted>"
-    assert query["page"] == "1"
+    assert "server-echoed-secret" not in str(error.value)
+    assert "<redacted>" in str(error.value)
 
 
 def test_parse_error_response_handles_invalid_error_schema() -> None:
@@ -153,7 +203,7 @@ def test_parse_error_response_handles_invalid_error_schema() -> None:
     parsed = CustomRequester.parse_error_response(response)
 
     assert isinstance(parsed, ErrorResponse)
-    assert parsed.statusCode == 500
+    assert parsed.status_code == 500
     assert parsed.message == '{"message": {"detail": "x"}}'
 
 
@@ -178,7 +228,7 @@ def test_parse_and_log_error_returns_error_response_and_logs(caplog: pytest.LogC
         )
 
     assert isinstance(error, ErrorResponse)
-    assert error.statusCode == 404
+    assert error.status_code == 404
     assert error.message == "Movie not found"
     assert any(
         "[MOVIE][GET_BY_ID_FAILED]" in message
@@ -209,7 +259,7 @@ def test_parse_and_log_error_handles_non_json_response(caplog: pytest.LogCapture
         )
 
     assert isinstance(error, ErrorResponse)
-    assert error.statusCode == 502
+    assert error.status_code == 502
     assert error.message == "upstream unavailable"
     assert any(
         "[PAYMENT][CREATE_FAILED]" in message

@@ -6,15 +6,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-_SENSITIVE_KEYS = {
-    "authorization",
-    "password",
-    "token",
-    "access_token",
-    "refresh_token",
-    "api_key",
-    "secret",
-}
+from tests.utils.sensitive_data import REDACTED_VALUE, is_sensitive_key, redact_data
+
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -29,28 +22,25 @@ def _is_project_record(record: logging.LogRecord) -> bool:
     return record.name.startswith("tests")
 
 
-def _is_sensitive_key(key: str) -> bool:
-    normalized = key.lower()
-    return any(fragment in normalized for fragment in _SENSITIVE_KEYS)
-
-
 def _serialize_value(key: str, value: Any) -> str:
-    if _is_sensitive_key(key):
-        return "<redacted>"
+    if is_sensitive_key(key):
+        return REDACTED_VALUE
 
-    if isinstance(value, str):
-        return json.dumps(value, ensure_ascii=False)
+    safe_value = redact_data(value)
 
-    if isinstance(value, bool | int | float):
-        return str(value)
+    if isinstance(safe_value, str):
+        return json.dumps(safe_value, ensure_ascii=False)
 
-    if isinstance(value, Mapping | list | tuple | set):
+    if isinstance(safe_value, bool | int | float):
+        return str(safe_value)
+
+    if isinstance(safe_value, Mapping | list | tuple | set):
         try:
-            return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+            return json.dumps(safe_value, ensure_ascii=False, sort_keys=True, default=str)
         except TypeError:
-            return str(value)
+            return str(safe_value)
 
-    return str(value)
+    return str(safe_value)
 
 
 def format_context(**context: Any) -> str:

@@ -1,14 +1,15 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from tests.models.base import ApiModel
 
 
-class UserInReview(BaseModel):
+class UserInReview(ApiModel):
     full_name: str = Field(alias="fullName")
 
 
-class User(BaseModel):
-    id: str
+class UserDetails(ApiModel):
     email: str
     full_name: str = Field(alias="fullName")
     roles: list[str]
@@ -17,7 +18,15 @@ class User(BaseModel):
     created_at: datetime = Field(alias="createdAt")
 
 
-class UserSummary(BaseModel):
+class User(UserDetails):
+    id: str
+
+
+class UpdatedUser(UserDetails):
+    """User fields returned by PATCH /user/{id}; the API omits the identifier."""
+
+
+class UserSummary(ApiModel):
     id: str
     email: str
     full_name: str = Field(alias="fullName")

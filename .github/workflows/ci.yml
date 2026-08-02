@@ -2,127 +2,128 @@ name: CI
 
 on:
   pull_request:
+    branches:
+      - main
+      - master
   push:
     branches:
       - main
       - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+  UV_VERSION: "0.9.2"
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  lint:
-    name: Lint & Format Check
+  quality:
+    name: Quality gate
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          python-version: "3.13"
-      - name: Install uv
-        run: python -m pip install --upgrade uv
-      - name: Install dependencies
-        run: uv sync --dev
-      - name: Ruff check
-        run: uv run ruff check .
-      - name: Ruff format (check)
-        run: uv run ruff format --check .
+          persist-credentials: false
 
-  type-check:
-    name: Type Checking (ty)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Set up test environment
+        uses: ./.github/actions/setup-test-environment
         with:
-          python-version: "3.13"
-      - name: Install uv
-        run: python -m pip install --upgrade uv
-      - name: Install dependencies
-        run: uv sync --dev
-      - name: Run ty
-        run: uv run ty check tests --exclude tests/ui/ --force-exclude
+          python-version: ${{ env.PYTHON_VERSION }}
+          uv-version: ${{ env.UV_VERSION }}
 
-  security:
-    name: Security Check (bandit)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - name: Install uv
-        run: python -m pip install --upgrade uv
-      - name: Install dependencies
-        run: uv sync --dev
-      - name: Run bandit
-        run: uv run bandit -c pyproject.toml -r tests
+      - name: Run static analysis and unit tests
+        run: make ci-local
 
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    needs: [lint, type-check, security]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Upload unit-test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          python-version: "3.13"
-      - name: Install uv
-        run: python -m pip install --upgrade uv
-      - name: Install dependencies
-        run: uv sync --dev
-      - name: Run unit tests (request/utils/helpers)
-        run: >
-          uv run pytest
-          tests/request
-          tests/utils
-          tests/constants/test_payment_data_and_ui_data.py
-          tests/ui/test_payment_url_matching.py
+          name: unit-test-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            allure-results/
+            logs/
+          if-no-files-found: ignore
+          retention-days: 7
 
   api-tests:
-    name: API Tests
+    name: API tests
+    if: >-
+      ${{
+        github.event_name != 'pull_request' ||
+        (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+      }}
+    needs: quality
     runs-on: ubuntu-latest
-    needs: [lint, type-check, security, unit-tests]
+    timeout-minutes: 20
     environment: ADMIN
     env:
       ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
       ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
       BASE_URL: ${{ secrets.BASE_URL }}
       BASE_AUTH_URL: ${{ secrets.BASE_AUTH_URL }}
-      BASE_UI_URL: ${{ secrets.BASE_UI_URL }}
       BASE_PAYMENT_URL: ${{ secrets.BASE_PAYMENT_URL }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          python-version: "3.13"
-      - name: Install uv
-        run: python -m pip install --upgrade uv
-      - name: Install dependencies
-        run: uv sync --dev
-      - name: Validate required API secrets
-        if: ${{ env.ADMIN_EMAIL == '' || env.ADMIN_PASSWORD == '' || env.BASE_URL == '' || env.BASE_AUTH_URL == '' || env.BASE_PAYMENT_URL == '' }}
-        run: |
-          echo "::error::Missing required secrets for API tests. Expected ADMIN_EMAIL, ADMIN_PASSWORD, BASE_URL, BASE_AUTH_URL, BASE_PAYMENT_URL."
-          exit 1
+          persist-credentials: false
+
+      - name: Set up test environment
+        uses: ./.github/actions/setup-test-environment
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          uv-version: ${{ env.UV_VERSION }}
+
+      - name: Validate required secrets
+        run: >-
+          bash .github/scripts/require-environment.sh
+          ADMIN_EMAIL ADMIN_PASSWORD BASE_URL BASE_AUTH_URL BASE_PAYMENT_URL
+
       - name: Run API tests with coverage
-        run: uv run pytest tests/api -m "not ui" -n auto --dist loadgroup --cov=tests --cov-report=xml --cov-report=html --cov-report=term --cov-fail-under=80
-      - name: Upload coverage reports
-        uses: actions/upload-artifact@v4
+        run: >-
+          uv run --frozen pytest tests/api -m "not ui"
+          -n 4 --dist loadgroup
+          --cov=tests
+          --cov-report=xml
+          --cov-report=html
+          --cov-report=term-missing
+          --cov-fail-under=80
+
+      - name: Upload API-test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: coverage-report
+          name: api-test-reports-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            htmlcov/
             coverage.xml
-      - name: Upload Allure results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-results
-          path: allure-results/
+            htmlcov/
+            allure-results/
+            logs/
+          if-no-files-found: ignore
           retention-days: 7
 
   ui-tests:
-    name: UI Tests
+    name: UI tests
+    if: >-
+      ${{
+        github.event_name != 'pull_request' ||
+        (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+      }}
+    needs: quality
     runs-on: ubuntu-latest
-    needs: [lint, type-check, security, unit-tests]
+    timeout-minutes: 30
     environment: ADMIN
     env:
       ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
@@ -132,29 +133,36 @@ jobs:
       BASE_UI_URL: ${{ secrets.BASE_UI_URL }}
       BASE_PAYMENT_URL: ${{ secrets.BASE_PAYMENT_URL }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          python-version: "3.13"
-      - name: Install uv
-        run: python -m pip install --upgrade uv
-      - name: Install dependencies
-        run: uv sync --dev
-      - name: Install Playwright browsers
-        run: uv run playwright install --with-deps chromium
-      - name: Validate required UI secrets
-        if: ${{ env.ADMIN_EMAIL == '' || env.ADMIN_PASSWORD == '' || env.BASE_URL == '' || env.BASE_AUTH_URL == '' || env.BASE_UI_URL == '' || env.BASE_PAYMENT_URL == '' }}
-        run: |
-          echo "::error::Missing required secrets for UI tests. Expected ADMIN_EMAIL, ADMIN_PASSWORD, BASE_URL, BASE_AUTH_URL, BASE_UI_URL, BASE_PAYMENT_URL."
-          exit 1
+          persist-credentials: false
+
+      - name: Set up test environment
+        uses: ./.github/actions/setup-test-environment
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          uv-version: ${{ env.UV_VERSION }}
+
+      - name: Validate required secrets
+        run: >-
+          bash .github/scripts/require-environment.sh
+          ADMIN_EMAIL ADMIN_PASSWORD BASE_URL BASE_AUTH_URL BASE_UI_URL BASE_PAYMENT_URL
+
+      - name: Install Chromium
+        run: uv run --frozen playwright install --with-deps chromium
+
       - name: Run UI tests
-        run: uv run pytest tests/ui -m "ui"
-      - name: Upload UI logs/screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
+        run: uv run --frozen pytest tests/ui -m "ui" -n 2 --dist loadgroup
+
+      - name: Upload UI-test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: ui-artifacts
+          name: ui-test-reports-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            logs/
             allure-results/
+            logs/
+            test-results/
+          if-no-files-found: ignore
           retention-days: 7

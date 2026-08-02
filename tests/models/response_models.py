@@ -1,19 +1,16 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
+from tests.models.base import ApiModel
 from tests.models.movie_models import Movie
 from tests.models.user_models import User, UserSummary
 
 
-class LoginResponse(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
+class LoginResponse(ApiModel):
     access_token: str = Field(alias="accessToken")
     user: UserSummary
 
 
-class MoviesList(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
+class MoviesPage(ApiModel):
     movies: list[Movie]
     page: int
     page_size: int = Field(alias="pageSize")
@@ -21,25 +18,29 @@ class MoviesList(BaseModel):
     page_count: int = Field(alias="pageCount")
 
 
-class ErrorResponse(BaseModel):
-    statusCode: int
+class ErrorResponse(ApiModel):
+    status_code: int = Field(alias="statusCode")
     message: str | list[str]
     error: str | None = None
 
+    @property
+    def message_text(self) -> str:
+        """Return one string for either a single API message or validation errors."""
+        return " ".join(self.message) if isinstance(self.message, list) else self.message
 
-class DeletedObject(BaseModel):
+
+class DeletedResource(ApiModel):
     id: int
 
 
-class GenreResponse(BaseModel):
+class GenreResponse(ApiModel):
     id: int
     name: str
 
 
-class UsersListResponse(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
+class UsersPage(ApiModel):
     users: list[User]
     count: int
     page: int
     page_size: int = Field(alias="pageSize")
+    page_count: int = Field(alias="pageCount")

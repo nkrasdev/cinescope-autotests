@@ -40,6 +40,7 @@ class TestMainPage:
         """,
         severity=allure.severity_level.CRITICAL,
     )
+    @pytest.mark.smoke
     def test_movie_cards_are_displayed(self):
         with allure.step("Получить все карточки фильмов и убедиться, что они есть"):
             movie_cards = self.main_page.get_movie_cards()

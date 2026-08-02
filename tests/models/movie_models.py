@@ -1,8 +1,9 @@
 from datetime import datetime
-from enum import Enum, IntEnum
+from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from tests.models.base import ApiModel
 from tests.models.user_models import UserInReview
 
 
@@ -11,19 +12,11 @@ class Location(str, Enum):
     SPB = "SPB"
 
 
-class GenreId(IntEnum):
-    ACTION = 1
-    COMEDY = 2
-    DRAMA = 3
-    FANTASY = 4
-    THRILLER = 5
-
-
-class Genre(BaseModel):
+class Genre(ApiModel):
     name: str
 
 
-class Review(BaseModel):
+class Review(ApiModel):
     user_id: str | None = Field(None, alias="userId")
     rating: int | None = None
     text: str | None = None
@@ -32,7 +25,7 @@ class Review(BaseModel):
     user: UserInReview | None = None
 
 
-class Movie(BaseModel):
+class Movie(ApiModel):
     id: int
     name: str
     description: str

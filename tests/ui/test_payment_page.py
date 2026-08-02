@@ -75,7 +75,7 @@ class TestPaymentPage:
     )
     @pytest.mark.xfail(
         reason="DEV frontend posts to /payment (404), so successful payment flow is currently unavailable",
-        strict=False,
+        strict=True,
     )
     def test_successful_payment(self, page: Page):
         with allure.step("Заполнить и отправить платежную форму"):

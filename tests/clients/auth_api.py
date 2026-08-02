@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 from tests.constants.endpoints import (
@@ -27,14 +28,14 @@ class AuthAPI(CustomRequester):
         self,
         email: str | None = ADMIN_EMAIL,
         password: str | None = ADMIN_PASSWORD,
-        expected_status: int = 200,
+        expected_status: int = 201,
     ) -> LoginApiResponse:
         if not email or not password:
             raise ValueError("ADMIN_EMAIL и ADMIN_PASSWORD должны быть указаны в .env file")
 
         log_event(self.logger, "auth", "login_attempt", email=email)
-        payload = {"email": email, "password": password}
-        response = self.post(LOGIN_ENDPOINT, json=payload, expected_status=expected_status)
+        credentials_payload = {"email": email, "password": password}
+        response = self.post(LOGIN_ENDPOINT, json=credentials_payload, expected_status=expected_status)
         if response.ok:
             login_response = LoginResponse.model_validate(response.json())
             self.session.headers["Authorization"] = f"Bearer {login_response.access_token}"
@@ -49,7 +50,7 @@ class AuthAPI(CustomRequester):
             email=email,
         )
 
-    def register(self, user_data: dict, expected_status: int = 201) -> User | ErrorResponse:
+    def register(self, user_data: Mapping[str, Any], expected_status: int = 201) -> RegisterApiResponse:
         email = user_data.get("email", "N/A")
         log_event(self.logger, "auth", "register_attempt", email=email)
         response = self.post(REGISTER_ENDPOINT, json=user_data, expected_status=expected_status)
@@ -72,26 +73,30 @@ class AuthAPI(CustomRequester):
         if response.ok:
             log_event(self.logger, "auth", "logout_success")
             try:
-                result: dict[str, Any] = response.json()
+                response_payload: dict[str, Any] = response.json()
             except ValueError:
-                result = {"message": response.text}
-            return result
+                response_payload = {"message": response.text}
+            return response_payload
         return self.parse_and_log_error(response, domain="auth", action="logout_failed", level=logging.ERROR)
 
-    def refresh_token(self, expected_status: int = 200) -> RefreshTokenApiResponse:
+    def refresh_token(self, expected_status: int = 201) -> RefreshTokenApiResponse:
         log_event(self.logger, "auth", "refresh_attempt")
         response = self.get(REFRESH_ENDPOINT, expected_status=expected_status)
         if response.ok:
             log_event(self.logger, "auth", "refresh_success")
-            result: dict[str, Any] = response.json()
-            return result
+            response_payload: dict[str, Any] = response.json()
+            return response_payload
         return self.parse_and_log_error(response, domain="auth", action="refresh_failed", level=logging.ERROR)
 
     def confirm_email(self, token: str, expected_status: int = 200) -> ConfirmEmailApiResponse:
         log_event(self.logger, "auth", "confirm_email_attempt", token=token)
-        response = self.get(f"{CONFIRM_ENDPOINT}/{token}", expected_status=expected_status)
+        response = self.get(
+            f"{CONFIRM_ENDPOINT}/{token}",
+            expected_status=expected_status,
+            redact_url_path=True,
+        )
         if response.ok:
             log_event(self.logger, "auth", "confirm_email_success")
-            result: dict[str, Any] = response.json()
-            return result
+            response_payload: dict[str, Any] = response.json()
+            return response_payload
         return self.parse_and_log_error(response, domain="auth", action="confirm_email_failed", level=logging.WARNING)

@@ -25,6 +25,20 @@ def test_format_context_redacts_sensitive_values() -> None:
     assert context == "access_token=<redacted> authorization=<redacted> password=<redacted>"
 
 
+def test_format_context_redacts_nested_sensitive_values() -> None:
+    context = format_context(
+        payload={
+            "email": "nested@example.com",
+            "profile": {"api_key": "nested-secret", "name": "Visible Name"},
+        }
+    )
+
+    assert "nested@example.com" not in context
+    assert "nested-secret" not in context
+    assert "Visible Name" in context
+    assert context.count("<redacted>") == 2
+
+
 def test_build_log_message_uses_standardized_prefix_and_context() -> None:
     message = build_log_message("test", "start", nodeid="tests/api/test_auth.py::test_login")
 

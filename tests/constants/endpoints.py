@@ -5,8 +5,6 @@ BASE_UI_URL = settings.base_ui_url
 BASE_AUTH_URL = settings.base_auth_url
 BASE_PAYMENT_URL = settings.base_payment_url
 
-HEADERS = {"Content-Type": "application/json", "Accept": "application/json"}
-
 MOVIES_ENDPOINT = "/movies"
 MOVIE_BY_ID_ENDPOINT = "/movies/{movie_id}"
 REVIEWS_ENDPOINT = "/movies/{movie_id}/reviews"

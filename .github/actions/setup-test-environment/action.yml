@@ -1,0 +1,25 @@
+name: Set up test environment
+description: Install a pinned Python and the locked project dependencies with uv caching.
+
+inputs:
+  python-version:
+    description: Python version used by the test suite.
+    required: true
+  uv-version:
+    description: uv version used to install dependencies.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install uv and Python
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        version: ${{ inputs.uv-version }}
+        python-version: ${{ inputs.python-version }}
+        enable-cache: true
+        cache-dependency-glob: uv.lock
+
+    - name: Install locked dependencies
+      shell: bash
+      run: uv sync --locked --all-groups
